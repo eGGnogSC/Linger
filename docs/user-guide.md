@@ -1,4 +1,4 @@
-# Using Linger
+# Install and use Linger
 
 Linger is a small, private place for a group of friends to hang out. Somebody
 you know runs the server; you install the app and connect to it.
@@ -10,25 +10,46 @@ If you are the one running the server, you want the
 
 ## Installing Linger
 
-Go to the [Releases page](https://github.com/matthewguenther/Linger/releases)
-and download the file for your computer.
+Open the [latest release](https://github.com/itsMattGuenther/Linger/releases/latest)
+and choose **one** app file for your computer. Your host runs the server
+separately; you do not need a server download.
 
-Everything on that page is the app. The server is a separate thing that
-whoever hosts your Linger sets up — you do not need it.
+| Your computer | Download |
+|---|---|
+| Windows | `.exe` |
+| Ubuntu, Debian, Mint | `.deb` |
+| Fedora, RHEL, openSUSE | `.rpm` |
+| Arch, Omarchy, or another Linux | `.AppImage` |
 
-- **Windows** — the `.exe`. You will also see an `.msi`; that one is for
-  companies installing it on a lot of machines at once. If you are not sure, you
-  want the `.exe`.
-- **Debian, Ubuntu or Mint** — the `.deb`.
-- **Fedora, RHEL or openSUSE** — the `.rpm`.
-- **Any other Linux** — the `.AppImage`. It runs on any distribution: download
-  it, make it executable, and open it.
-- **macOS** — not built yet. You can build it from the source if you are
-  comfortable doing that; otherwise, sorry, not yet.
+The `.msi` is another Windows installer. Files ending in `.sig` and
+`latest.json` are for updates, not for manual installation. There is no macOS
+installer yet.
 
-You will also see files ending in `.sig` and one called `latest.json`. Those are
-how Linger checks that an update really came from the people who make it. You do
-not need to download them.
+**Arch or Omarchy:** if the AppImage needs FUSE and your system does not have
+it, install `fuse2` (`omarchy pkg add fuse2` on Omarchy, or
+`sudo pacman -S fuse2` on Arch). `fuse3` alone may not be enough.
+
+**Run the AppImage.** Here is an example for a file downloaded into `Downloads`.
+Use the *actual filename* you downloaded if its version is different:
+
+```bash
+chmod +x ~/Downloads/linger_0.1.0_amd64.AppImage
+~/Downloads/linger_0.1.0_amd64.AppImage
+```
+
+Type the second line in a terminal and press Enter. That file path **is the
+launch command**. Use it again whenever you want to reopen Linger. You can
+also open the executable file from your file manager.
+
+If it crashes on Linux with `Could not create GBM EGL display`, try this exact
+command instead (with your downloaded filename):
+
+```bash
+WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 ~/Downloads/linger_0.1.0_amd64.AppImage
+```
+
+That setting applies only to this launch. It worked around a WebKitGTK graphics
+crash on one Omarchy/Wayland computer; it is not needed on every machine.
 
 **Windows will show you a warning.** It says *"Windows protected your PC"*, and
 the *Run anyway* button is hidden behind the small *More info* link. That is
@@ -44,8 +65,10 @@ Open the app. There is one box, and it takes any of these:
   `linger.example.com`
 - a **setup link**, if you are the person who just started the server
 
-Paste it, then pick a username and a password (eight characters or more), or
-sign in if you already have an account.
+Paste the **whole link**, including anything after `?`, then pick a username
+and a password (eight characters or more), or sign in if you already have an
+account. A setup link is private and works once; an invite link is for the
+person it was sent to.
 
 The app remembers you. On most computers your sign-in is kept in the system's
 password store — the same place your browser keeps passwords — so you do not
@@ -55,6 +78,9 @@ you to sign in next time.
 You can be on **more than one server**. They stack up in the far-left rail and
 each one is completely separate: separate account, separate friends, separate
 everything.
+
+You can stop reading and use the app now. The rest of this guide explains
+features as you need them.
 
 ---
 

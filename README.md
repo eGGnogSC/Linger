@@ -151,10 +151,10 @@ Other privacy properties that *are* guaranteed:
 ## 📦 Installing the client
 
 **New here? The [user guide](docs/user-guide.md) covers installing and using
-Linger in plain language** — no command line, nothing assumed.
+Linger in plain language**, including the exact commands for Linux AppImages.
 
 Grab the installer for your platform from
-[Releases](https://github.com/matthewguenther/Linger/releases). Linux and
+[Releases](https://github.com/itsMattGuenther/Linger/releases). Linux and
 Windows are built; **macOS is not built yet**, so on a Mac you build from a
 checkout (see Development below).
 
@@ -171,14 +171,15 @@ quietly in the status bar, and downloads nothing until you ask it to under
 
 ## 🚀 Running a server
 
-**[The host guide](docs/host-guide.md) is the real instructions** — domain, DNS,
-install, invites, backups, updates — written for somebody who is not a
-developer. This is the short version.
+**[The host guide](docs/host-guide.md) is the step-by-step path**, including a
+VPS-first route, DNS, firewall ports, first-run setup, and the home-router
+alternative. This is the short version for someone who already has Docker:
 
 ```bash
 cd deploy
-# point two DNS records at this machine: linger.example and cdn.linger.example
+# point two DNS records at this machine; allow incoming TCP 80 and 443
 # edit compose.yaml and Caddyfile: set both to your domain
+docker compose run --rm --user root --entrypoint chown linger linger:linger /data
 docker compose up -d
 docker compose logs linger   # prints a one-time setup URL on first run
 ```

@@ -10,7 +10,7 @@ If you are the one running the server, you want the
 
 ## Installing Linger
 
-Open the [latest release](https://github.com/matthewguenther/Linger/releases/latest)
+Open the [latest release](https://github.com/itsMattGuenther/Linger/releases/latest)
 and choose **one** app file for your computer. Your host runs the server
 separately; you do not need a server download.
 

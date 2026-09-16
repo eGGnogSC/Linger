@@ -5,7 +5,7 @@ Use the [user guide](user-guide.md).
 
 The server runs without a desktop. You control it through a terminal, usually
 over SSH. You will install the desktop app on **your own computer** to make your
-host account. Nothing on the [Releases page](https://github.com/matthewguenther/Linger/releases)
+host account. Nothing on the [Releases page](https://github.com/itsMattGuenther/Linger/releases)
 is a server installer.
 
 ## Before you start
@@ -54,8 +54,8 @@ folder in your current directory and put two setup files inside it:
 ```bash
 mkdir linger
 cd linger
-curl -fLO https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/compose.yaml
-curl -fLO https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/Caddyfile
+curl -fLO https://raw.githubusercontent.com/itsMattGuenther/Linger/main/deploy/compose.yaml
+curl -fLO https://raw.githubusercontent.com/itsMattGuenther/Linger/main/deploy/Caddyfile
 ```
 
 The Docker images download automatically later. The app on the Releases page
@@ -220,7 +220,7 @@ machine; what passes through it is scrambled sound it cannot listen to.
 1. Download the optional file, then copy it next to `compose.yaml`:
 
    ```bash
-   curl -fLO https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/.env.example
+   curl -fLO https://raw.githubusercontent.com/itsMattGuenther/Linger/main/deploy/.env.example
    cp .env.example .env
    ```
 2. Put a long random secret in it: `openssl rand -hex 32` prints one. This one

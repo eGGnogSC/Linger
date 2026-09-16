@@ -154,7 +154,7 @@ Other privacy properties that *are* guaranteed:
 Linger in plain language**, including the exact commands for Linux AppImages.
 
 Grab the installer for your platform from
-[Releases](https://github.com/matthewguenther/Linger/releases). Linux and
+[Releases](https://github.com/itsMattGuenther/Linger/releases). Linux and
 Windows are built; **macOS is not built yet**, so on a Mac you build from a
 checkout (see Development below).
 

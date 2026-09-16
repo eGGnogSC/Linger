@@ -10,7 +10,50 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
+  changes:
+    # Keep a real check for docs-only PRs, but do not start four unrelated
+    # build/test jobs. Job-level skips report success even when checks become
+    # required; skipping the entire workflow can leave them pending.
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.classify.outputs.source }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: classify changed files
+        id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            if ! base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"; then
+              echo 'source=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            base="$BASE_SHA"
+          fi
+
+          # If Git cannot compare the commits, run everything rather than
+          # incorrectly calling a code change documentation-only.
+          # Count both sides of a rename, so moving source into docs still
+          # runs the tests for the removed source file.
+          if ! changed="$(git diff --no-renames --name-only "$base" "$HEAD_SHA")"; then
+            echo 'source=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "$changed" ]] || printf '%s\n' "$changed" | grep -Eqv '(^docs/|\.md$|^LICENSE$)'; then
+            echo 'source=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'source=false' >> "$GITHUB_OUTPUT"
+          fi
+
   rust:
+    needs: changes
+    if: ${{ needs.changes.outputs.source == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +82,8 @@ jobs:
         run: git diff --exit-code client/src/generated
 
   s3:
+    needs: changes
+    if: ${{ needs.changes.outputs.source == 'true' }}
     # The S3 storage backend, against a real S3 API. These tests skip themselves
     # when LINGER_TEST_S3_ENDPOINT is unset, which is what keeps the `rust` job
     # and every laptop green without a bucket — so they need a job that sets it,
@@ -63,7 +108,7 @@ jobs:
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=$LINGER_TEST_S3_ACCESS_KEY_ID \
             -e MINIO_ROOT_PASSWORD=$LINGER_TEST_S3_SECRET_ACCESS_KEY \
-            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
           for _ in $(seq 1 60); do
             curl -fsS -o /dev/null "$LINGER_TEST_S3_ENDPOINT/minio/health/live" && exit 0
             sleep 1
@@ -76,6 +121,8 @@ jobs:
         run: cargo test -p linger-server --test s3 -- --nocapture
 
   web:
+    needs: changes
+    if: ${{ needs.changes.outputs.source == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -97,6 +144,8 @@ jobs:
         run: pnpm exec vite build
 
   tauri-shell:
+    needs: changes
+    if: ${{ needs.changes.outputs.source == 'true' }}
     # Builds the desktop shell against real WebKitGTK and runs its tests — the
     # gateway client lives here, and its resume/sequence accounting is the kind
     # of thing that has to be gated, not checked by hand. Signed bundles for all

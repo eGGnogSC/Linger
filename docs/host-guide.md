@@ -1,146 +1,120 @@
-# Running a Linger server
+# Host a Linger server
 
-This is for the one person in a group who runs the server. You do not need to be
-a developer. You need a computer that stays on, a domain name, and about half an
-hour.
+This is for the person running the server. Joining somebody else's server?
+Use the [user guide](user-guide.md).
 
-If you are here to *use* Linger, you want the [user guide](user-guide.md)
+The server runs without a desktop. You control it through a terminal, usually
+over SSH. You will install the desktop app on **your own computer** to make your
+host account. Nothing on the [Releases page](https://github.com/matthewguenther/Linger/releases)
+is a server installer.
+
+## Before you start
+
+- **A Linux computer reachable from the internet.** A VPS is easiest for a
+  first try. For example, a small Ubuntu VPS from
+  [DigitalOcean](https://www.digitalocean.com/products/droplets) works; 2 GiB
+  of memory is a reasonable test starting point, not a measured minimum. You
+  can use a computer at home, but you must also [set up your router](#hosting-at-home).
+- **A domain name** you control, or [two free dynamic-DNS names](#using-free-names).
+  You need two names because uploaded files must use a different address from
+  the app. A bare IP address will not work in the installed app.
+- **Docker Engine and the Compose plugin** on the server. On Ubuntu, use
+  [Docker's Ubuntu instructions](https://docs.docker.com/engine/install/ubuntu/).
+  Check that `docker compose version` works before continuing. If Docker says
+  permission denied, put `sudo` before each `docker` command below.
+
+On a VPS, connect from your computer with `ssh root@YOUR_VPS_IP`, replacing
+`YOUR_VPS_IP` with its public IP. You can also use the provider's console; some
+providers give you a username other than `root`. In the provider firewall,
+allow **TCP 80 and 443 from anywhere** so Caddy can serve HTTPS. Allow **TCP 22
+(SSH)** from your own IP if possible. If you turn on voice between different
+networks, open the extra ports in [Voice](#voice-between-different-networks).
+
+## 1. Point two names at the server
+
+Find your VPS's **public IPv4 address** in its control panel. At your domain
+registrar, add two A records. For `example.com`, Namecheap's **Advanced DNS →
+Host Records** screen would look like this:
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| A Record | `linger` | your server's public IPv4 | Automatic |
+| A Record | `cdn.linger` | the same public IPv4 | Automatic |
+
+Those become `linger.example.com` and `cdn.linger.example.com`. Do not replace
+your existing `@` or `www` records. Give DNS a few minutes to catch up. If
+you're hosting at home, use your [home connection's public IPv4](#hosting-at-home)
 instead.
 
----
+## 2. Get the server files
 
-## What you are actually running
-
-Two small programs in containers: Linger itself, and Caddy, which handles the
-web address and the security certificate for you.
-
-Everything the server owns lives in one folder: a database file with all the
-messages, and a folder of uploaded files next to it. Copy that folder and you
-have copied the whole server.
-
-**You do not download the server.** There is nothing on the Releases page for
-you — everything there is the app people install on their own computers. The
-server arrives on its own when you run `docker compose up` in step 4, and
-updates the same way. The only file you fetch by hand is the setup file in
-step 2.
-
-## What you need first
-
-- **A computer that stays on and is reachable from the internet.** A cheap
-  virtual server (about $5–10 a month) is the usual answer. An old machine at
-  home works if you can forward ports 80 and 443 to it.
-- **A web address.** Either a domain you buy (around $12 a year) or a free one
-  from a dynamic-DNS service. See *Do I have to buy a domain?* below.
-- **Docker.** Install it from [docker.com](https://docs.docker.com/engine/install/).
-
-## Do I have to buy a domain?
-
-**No — but you do need a *name*, and a plain IP address will not work.** Here is
-why, in one line each:
-
-- The app only talks to servers over an encrypted connection, and encryption
-  needs a name to put on the certificate. An IP address cannot have one.
-- Uploaded files are served from a *second* name. That is what stops a file
-  somebody uploads from pretending to be the app itself.
-- Home internet connections get a new IP address every few weeks. With a name,
-  the server can move and nobody has to be told anything.
-
-**The free way.** Dynamic-DNS services — DuckDNS is the usual one — hand out
-names for nothing. Register **two** of them, one for the app and one for files:
-
-```yaml
-LINGER_DOMAIN: yourgroup.duckdns.org
-LINGER_MEDIA_DOMAIN: yourgroupfiles.duckdns.org
-```
-
-Put those same two names in the Caddyfile, one per block. Everything else in
-this guide works the same, and Caddy still gets a real certificate.
-
-Two separate names, rather than one name with `cdn.` in front of it, because
-free providers differ on whether you can put anything in front of your name.
-Two names always works.
-
----
-
-## 1. Point your address at the machine
-
-**Using a free dynamic-DNS name?** You do not add records yourself — you set
-your IP on the provider's website, or run their small updater so it keeps up
-when your IP changes. Do that for both names and skip to step 2.
-
-**Using a domain you bought?** Add **two** records at your registrar. Both point
-at your server's IP address.
-
-| Type | Name                     | Points to      |
-|------|--------------------------|----------------|
-| A    | `linger.example.com`     | your server IP |
-| A    | `cdn.linger.example.com` | your server IP |
-
-(Use `AAAA` instead of `A` if your server has an IPv6 address.)
-
-**Why two.** Uploaded files are served from the `cdn.` name, never from the main
-one. That way a file somebody uploads can never pretend to be the app itself. If
-you skip the second record, chat works and file uploads break.
-
-DNS changes can take a few minutes to spread. Get this done first and it will be
-ready by the time you need it.
-
-## 2. Get the two setup files
+Run these commands **on the server**, in a terminal. They make a `linger`
+folder in your current directory and put two setup files inside it:
 
 ```bash
-mkdir linger && cd linger
-curl -O https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/compose.yaml
-curl -O https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/Caddyfile
-curl -O https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/.env.example
+mkdir linger
+cd linger
+curl -fLO https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/compose.yaml
+curl -fLO https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/Caddyfile
 ```
 
-The third file is only needed if you turn on voice between different networks
-later (see *Settings you might want to change*); it does nothing until then.
+The Docker images download automatically later. The app on the Releases page
+is only for people's computers.
 
-## 3. Put your address in both of them
+## 3. Put your names in the files
 
-- In **compose.yaml**, change `LINGER_DOMAIN` to your address. If you are using
-  two free names, uncomment `LINGER_MEDIA_DOMAIN` and put the second one there.
-- In **Caddyfile**, replace `linger.example.com` everywhere it appears. There
-  are two blocks: the first is your main address, the second is the one files
-  are served from.
+Open the files with `nano compose.yaml` and `nano Caddyfile` (or another text
+editor). In `compose.yaml`, change `LINGER_DOMAIN` from `linger.example.com`
+to your main name. In `Caddyfile`, replace both example names with yours: the
+first block is for Linger and the `cdn.` block is for files. Keep them as
+**different names**. In `nano`, save with **Ctrl+O**, Enter, then **Ctrl+X**.
 
-Nothing else has to change to get started.
+If your VPS has a 50 GiB disk, also uncomment `LINGER_POOL_BYTES` in
+`compose.yaml` and set it to `10GB` for the test. The default 50 GB file pool
+would leave too little space for the operating system and Docker.
 
-## 4. Start it
+## 4. Start the server
+
+Still inside the `linger` folder, run:
 
 ```bash
+docker compose run --rm --user root --entrypoint chown linger linger:linger /data
 docker compose up -d
-docker compose logs linger
+docker compose logs --tail=60 linger
 ```
 
-In the log you will see a box like this:
+The first command gives Linger permission to write its database in the `data`
+folder. It also prevents the `unable to open database file` error seen on some
+hosts. In the log, look for a **one-time setup link** like:
 
-```
-  ┌─────────────────────────────────────────────────
-  │  This server isn't set up yet.
-  │  Open:  https://linger.example.com/setup?token=…
-  │  (the link works once, then never again)
-  └─────────────────────────────────────────────────
+```text
+https://linger.example.com/setup?token=…
 ```
 
-**Copy that whole link. It goes into the Linger app, not into a web browser** —
-there is no website to visit, and a browser will just show an error. The server
-says so in the box too.
+Keep the entire link, including `?token=…`, private. Paste it into the Linger
+desktop app in step 5, **not a browser**. Restarting Linger before you use the
+link creates a new one and invalidates the old one. If you accidentally share
+the link, restart Linger to replace it.
 
-If the box also says the address is `http` and an installed app cannot reach it,
-that means `LINGER_DOMAIN` is not set. Fix that before going further.
+You may also see a warning that `LINGER_TURN_SECRET` is not set. That is about
+the optional voice relay; it does not stop the server or text chat.
 
-## 5. Make your account
+From **your own computer**, check the address before opening the app:
+`curl -f https://linger.example.com/health` (replace the example name with
+yours). If it does not return a short JSON response, use
+[the connection checklist](#the-app-cannot-reach-the-server) first.
 
-[Install the app](user-guide.md#installing-linger), open it, and paste the setup
-link into the box that says *server or link*. The form that appears asks for
-four things: a **name for the server** (what your friends will see it called),
-your **username** (lowercase, cannot change later), your **display name**, and a
-**password** (eight characters or more, no silly rules).
+## 5. Make your host account
 
-That account is the host. There is no separate admin login, and there are no
-roles — you are a normal member who also has the host controls.
+[Install and open the app](user-guide.md#installing-linger) on your own computer.
+Paste the **whole setup link** into the *server or link* box and press
+**continue**. Choose a server name, username, display name and password (at
+least eight characters). The new account is the host account.
+
+If the app says it cannot reach the server, check
+[the connection steps below](#the-app-cannot-reach-the-server) before asking
+for a new token. The desktop app does not start when you run Docker commands;
+open it again the same way you installed it.
 
 ## 6. Invite people
 
@@ -155,6 +129,40 @@ so does **+ room**. A room needs a short name for after the `#` and, if you
 like, a topic.
 
 An invite link is the only way to get an account. There is no public sign-up.
+You can stop here; everything below is for later or for troubleshooting.
+
+---
+
+## Hosting at home
+
+You can use a home computer instead of a VPS. It needs to stay on. From that
+computer, `curl -4 https://api.ipify.org` shows the **public IPv4 address** for
+your DNS records. Check that your router's WAN address matches it. If it does
+not, you may be behind another router or carrier-grade NAT, and ordinary port
+forwarding may not work.
+
+In the router, reserve a **local IP address** for the computer and forward
+**TCP 80 and 443** to that address. Allow those ports in the computer's firewall
+too. This is the extra step a VPS avoids. DNS alone does not make a home server
+reachable.
+
+Anyone on the internet can then reach Linger through those ports. That does
+not mean your computer will be instantly compromised, but keep the operating
+system and Docker updated, and do not forward Docker's control port or Linger's
+internal port 8420. After a short test, remove the router forwards and stop the
+containers with `docker compose down`. Change or remove the two DNS records so
+they no longer point to your home connection.
+
+## Using free names
+
+You do not have to buy a domain, but you still need **two names**. A free
+dynamic-DNS provider such as DuckDNS can give you two, for example
+`yourgroup.duckdns.org` and `yourgroupfiles.duckdns.org`. Set both to your
+server's public IP on the provider's site (or use its IP updater).
+
+In `compose.yaml`, set `LINGER_DOMAIN` to the first name and uncomment
+`LINGER_MEDIA_DOMAIN` for the second. Put the same names in the two Caddyfile
+blocks. Do not assume the provider lets you add `cdn.` in front of a free name.
 
 ---
 
@@ -201,13 +209,20 @@ comments. Cloudflare R2 is the one to pick, because it does not charge for data
 going out. The server refuses to start if any of them are missing, so you will
 know straight away.
 
-**Voice between different networks.** Two people on the same wifi can talk
-without any of this. Two people in two houses usually cannot: home routers
+## Voice between different networks
+
+Two people on the same wifi can talk without any of this. Two people in two
+houses usually cannot: home routers
 hide the computers behind them, and somebody has to introduce the two — that is
 a *relay*, and it is the third container in `compose.yaml`. It is yours, on your
 machine; what passes through it is scrambled sound it cannot listen to.
 
-1. Copy `.env.example` to `.env` next to `compose.yaml`.
+1. Download the optional file, then copy it next to `compose.yaml`:
+
+   ```bash
+   curl -fLO https://raw.githubusercontent.com/matthewguenther/Linger/main/deploy/.env.example
+   cp .env.example .env
+   ```
 2. Put a long random secret in it: `openssl rand -hex 32` prints one. This one
    value is shared between Linger and the relay and is the relay's only lock,
    so make it long and do not reuse it anywhere.
@@ -296,24 +311,38 @@ It prints a new password. Send it to them; they can change it in the app under
 
 **Start here:** `docker compose logs linger` and `docker compose logs caddy`.
 
+### The app cannot reach the server
+
+Check that both DNS records point to the server's *current* public IP, then
+try `curl -f https://linger.example.com/health` with your own name substituted.
+If that fails, check `docker compose ps` and `docker compose logs caddy`.
+Caddy needs inbound access for its certificate checks, and the app needs HTTPS
+on TCP 443. Allow TCP 80 and 443. On a VPS check the provider and machine
+firewalls; at home check router forwarding too. A valid setup token cannot fix
+a connection failure.
+
+### Other problems
+
+- **`unable to open database file` repeats in Linger's log.** The `data`
+  folder is not writable by the container. Run the permission command in
+  step 4, then `docker compose up -d` again. It does not delete the database.
 - **Voice connects on the same wifi but not between houses.** The relay is not
   running, or its ports are not open. `docker compose ps` should list `coturn`;
   if it does not, you started without `--profile voice`. If it is running,
   check port 3478 (TCP and UDP) and UDP 49160–49200 reach the machine, and that
   `.env` holds the same secret Linger was started with.
-- **The address does not load at all.** Usually DNS has not caught up, or ports
-  80 and 443 are not reaching the machine. Caddy's log will say if it could not
-  get a certificate.
 - **Chat works but uploads fail.** The `cdn.` record is missing, or the second
   block of the Caddyfile still says `linger.example.com`.
 - **`docker compose pull` says `unauthorized`.** The prebuilt image is not
   available to you. Clone the repository and build it yourself:
   `docker build -f deploy/Dockerfile -t ghcr.io/matthewguenther/linger:latest .`
 - **The setup link does not work.** It works once. If you already made an
-  account, it is gone for good — that is deliberate.
+  account, it is gone for good — that is deliberate. If no account was made
+  but the link was exposed or lost, `docker compose restart linger` prints a
+  new one and invalidates the old one.
 - **The startup log warns that `LINGER_DOMAIN` is not set.** Then your friends
   cannot connect, whatever else looks fine. The app only talks to `https`
-  addresses. Go back to *Do I have to buy a domain?*
+  addresses. Go back to [Before you start](#before-you-start).
 
 ---
 
@@ -326,6 +355,5 @@ Say this out loud to the people you invite, because it is true:
 > but there is no end-to-end encryption. Your friends are trusting you, not the
 > software.
 
-What you are *not* taking on: there is no telemetry, no analytics, and no crash
-reporting anywhere in Linger. Nothing on your machine phones home, to Matt or to
-anyone else. Nobody is counting your users.
+Linger has no telemetry, analytics, or crash reporting. Nobody is counting
+your users.

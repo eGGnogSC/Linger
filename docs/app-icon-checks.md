@@ -40,6 +40,8 @@ The source check regenerates all six formats in temporary storage and compares
 them. ICNS chunk ordering is ignored because its writer does not guarantee it.
 The package check compares installed PNGs byte-for-byte, validates the launcher
 and X11 identity, and reads Windows PE icon resources without executing them.
+It accepts Tauri's `256x256@2` directory for the `128x128@2x.png` asset as well
+as an unscaled `256x256` directory; it still requires exact artwork bytes.
 It rejects both downloaded v0.1.0 application icons as expected; the Windows
 application passes when compared with its own tag's old artwork. The installer
 is a separate missing-configuration defect.

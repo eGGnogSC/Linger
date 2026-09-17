@@ -265,8 +265,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   validation; no release checks were closed. T-925 records the separate icon
   report without adding it to this implementation.
 
-- ⬜ **T-925 · Use the selected app icon on every desktop surface** — effort:
-  **medium**. The running Windows app was reported without the chosen icon;
+- ⏳ **T-925 · Use the selected app icon on every desktop surface** — effort:
+  **medium** — Matt, 2026-09-17. The running Windows app was reported without the chosen icon;
   the affected surface and cause have not been reproduced yet. Audit the
   existing porch artwork through bundle configuration, packaged assets and
   installed behavior. Check the app window, taskbar/dock, launcher/Start menu
@@ -275,6 +275,20 @@ flows and do not start a new milestone. Evidence and rationale are in the
   with package/version and the surface checked. Distinguish incorrect assets
   or app identity from stale OS icon caches. Check macOS when a distributable
   build is available; do not claim a platform passed from source inspection.
+
+  **Fix ready; installed-surface acceptance open, 2026-09-17 (PR #77).**
+  Published v0.1.0 predates the porch artwork;
+  its AppImage and Windows application still contain the old icons. Explicit
+  NSIS installer/uninstaller icons were also missing, and the Linux window
+  selected only the 32-pixel PNG. The configuration now uses the porch ICO for
+  both installer surfaces and a 256-pixel Linux window icon. All six source
+  formats regenerate correctly; Debian/RPM/AppImage resources and Windows
+  NSIS/MSI application, installer/uninstaller resources pass. Installed
+  Windows shortcuts target the correct executable. Its running caption icon
+  matches the approved 32-pixel PNG exactly; the actual Linux AppImage window
+  matches the 256-pixel PNG on both backends. CI runs and remaining real
+  launcher/taskbar/cache checks are recorded in
+  [app-icon-checks.md](docs/app-icon-checks.md); no release has been published.
 
 - ✅ **T-926 · Make file downloads clear and report failures** — effort:
   **medium** — Matt, 2026-09-17. Reproduce the silent browser-handoff failure

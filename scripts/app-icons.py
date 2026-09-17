@@ -7,6 +7,7 @@ stretching it. Tauri handles platform formats and size conversion.
 """
 
 import base64
+import argparse
 from pathlib import Path
 import shutil
 import struct
@@ -23,7 +24,25 @@ DESKTOP_ICONS = (
 )
 
 
+def comparable(path):
+    data = path.read_bytes()
+    if path.suffix != ".icns":
+        return data
+    # The ICNS writer iterates a map; chunk order is not stable or meaningful.
+    assert data[:4] == b"icns" and struct.unpack_from(">I", data, 4)[0] == len(data)
+    chunks, offset = [], 8
+    while offset < len(data):
+        size, = struct.unpack_from(">I", data, offset + 4)
+        assert size >= 8 and offset + size <= len(data)
+        chunks.append(data[offset:offset + size])
+        offset += size
+    return sorted(chunks)
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="verify without changing committed icons")
+    args = parser.parse_args()
     data = SOURCE.read_bytes()
     if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
         raise SystemExit("The approved artwork must be a PNG.")
@@ -43,13 +62,18 @@ def main():
         )
         output = work / "icons"
         subprocess.run(
-            ["pnpm", "tauri", "icon", str(square), "--output", str(output)],
+            ["node", str(ROOT / "client/node_modules/@tauri-apps/cli/tauri.js"),
+             "icon", str(square), "--output", str(output)],
             cwd=ROOT / "client", check=True,
         )
         # Mobile and store-specific assets are not part of the desktop bundle.
         for name in DESKTOP_ICONS:
-            shutil.copyfile(output / name, ICONS / name)
-    print(f"Updated {len(DESKTOP_ICONS)} desktop icons from {SOURCE.name}.")
+            if args.check:
+                if comparable(output / name) != comparable(ICONS / name):
+                    raise SystemExit(f"Icon differs from the approved artwork: {name}")
+            else:
+                shutil.copyfile(output / name, ICONS / name)
+    print(f"{'Verified' if args.check else 'Updated'} {len(DESKTOP_ICONS)} desktop icons from {SOURCE.name}.")
 
 
 if __name__ == "__main__":

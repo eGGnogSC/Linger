@@ -1,0 +1,90 @@
+name: package check
+
+# Unsigned test artifacts only: no release, signing secret or updater publication.
+on:
+  pull_request:
+    paths:
+      - 'assets/logo/**'
+      - 'client/src-tauri/icons/**'
+      - 'client/src-tauri/tauri*.json'
+      - 'client/src-tauri/src/main.rs'
+      - 'client/src-tauri/src/linux_startup.rs'
+      - 'scripts/*icon*'
+      - '.github/workflows/package-check.yml'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    env:
+      # These are inspectable test packages, not symbol archives. Full Rust
+      # debug info makes the WebRTC/WebKit link and AppImage needlessly huge.
+      CARGO_PROFILE_DEV_DEBUG: 0
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+          cache-on-failure: true
+      - name: Linux build tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libasound2-dev build-essential curl wget file libxdo-dev patchelf libarchive-tools
+      - run: pnpm install --frozen-lockfile
+        working-directory: client
+      - name: Approved artwork is current
+        run: python scripts/app-icons.py --check
+      - name: Build unsigned packages without updater artifacts
+        working-directory: client
+        # Debug profile saves CI time; tauri build still packages the built frontend.
+        # No test package is published to the release channel.
+        shell: bash
+        run: pnpm tauri build --debug --config '{"bundle":{"createUpdaterArtifacts":false}}'
+      - name: Linux package contents
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package-check/deb package-check/rpm package-check/appimage
+          dpkg-deb -x client/src-tauri/target/debug/bundle/deb/*.deb package-check/deb
+          bsdtar -xf client/src-tauri/target/debug/bundle/rpm/*.rpm -C package-check/rpm
+          python scripts/package-icons.py --linux-root package-check/deb
+          python scripts/package-icons.py --linux-root package-check/rpm
+          package=$(realpath client/src-tauri/target/debug/bundle/appimage/*.AppImage)
+          (cd package-check/appimage && "$package" --appimage-extract >/dev/null)
+          python scripts/package-icons.py --linux-root package-check/appimage/squashfs-root
+      - name: Installed Windows package and running icon
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: scripts/windows-icon-check.ps1 -Bundle client/src-tauri/target/debug/bundle -Output package-check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-check-${{ runner.os }}
+          path: |
+            client/src-tauri/target/debug/bundle/appimage/*.AppImage
+            client/src-tauri/target/debug/bundle/deb/*.deb
+            client/src-tauri/target/debug/bundle/rpm/*.rpm
+            client/src-tauri/target/debug/bundle/nsis/*-setup.exe
+            client/src-tauri/target/debug/bundle/msi/*.msi
+            package-check/running-window-icon.png
+          retention-days: 7

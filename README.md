@@ -151,7 +151,10 @@ Other privacy properties that *are* guaranteed:
 ## 📦 Installing the client
 
 **New here? The [user guide](docs/user-guide.md) covers installing and using
-Linger in plain language**, including the exact commands for Linux AppImages.
+Linger in plain language**, including choosing a download, opening it again,
+and the Linux AppImage troubleshooting commands. **New members need an invite
+link from their host**; entering only a server address opens sign-in for an
+existing account.
 
 Grab the installer for your platform from
 [Releases](https://github.com/itsMattGuenther/Linger/releases). Linux and
@@ -165,9 +168,10 @@ installer is not code-signed, which is true — see
 for the difference between that and the signature on updates, which is in place.
 Nothing about the download is broken.
 
-Once installed, the app keeps itself up to date: it checks at launch, says so
-quietly in the status bar, and downloads nothing until you ask it to under
-*settings → updates*.
+The app offers updates under *settings → this computer → updates* and
+downloads nothing until you choose *install and restart*. A code push is not
+a published desktop release. See the [update instructions](docs/user-guide.md#updates)
+for the manual fallback; the full real-machine updater check (HC-1) is still open.
 
 ## 🚀 Running a server
 

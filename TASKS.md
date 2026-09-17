@@ -348,7 +348,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   Preserve a working fallback. Do not claim system-WebKit fixture results
   prove an AppImage works; see `docs/linux-input-checks.md`.
 
-- ⏳ **T-930 · Quiet, controllable notification chimes** — effort: **high** —
+- ✅ **T-930 · Quiet, controllable notification chimes** — effort: **high** —
   Matt, 2026-09-17. Extend the existing sound player. Voice-session joins,
   leaves and moves, mic/deafen controls and DMs default on; ordinary room
   messages default off. Join/leave refers to the listener's voice session,
@@ -365,9 +365,10 @@ flows and do not start a new milestone. Evidence and rationale are in the
   write. Voice membership cues are limited to the listener's session, control
   cues wait for a successful change, and PTT stays quiet. Native gateway replay
   metadata suppresses reconnect chimes without changing the wire protocol or
-  existing mention-banner batching. The full local gate, 437 client tests,
-  44 Chromium cases and production build pass; a further storage-quota
-  regression also passes (438 client tests total). CI is pending. Real Linux/
+  existing mention-banner batching. **PR #76 is ready and unmerged:** all CI
+  checks pass, including 88 Chromium/WebKit cases. A temporary combined tree
+  with T-1407, T-925 and T-929 also passes the full local gate, all 438 client
+  tests, 44 Chromium cases and production build. Real Linux/
   Windows listening, sound-device behavior and banner silence still need an
   installed-client check; these are not HC-8/HC-9 evidence.
 
@@ -393,6 +394,12 @@ flows and do not start a new milestone. Evidence and rationale are in the
 - ⬜ **T-909 · Make Console controls readable and reachable** — effort: **medium**
   Review remaining muted/faint interactive text, focus states, empty/error
   states and the minimum desktop window. Use the existing tokens and layout.
+  **Member-menu follow-up, 2026-09-17:** the first click on a member should
+  present the same ordinary actions for hosts and members. Group removal and
+  other host-only operations behind an explicit admin-actions area, with
+  confirmation for removal. Keep administration discoverable without exposing
+  destructive actions in the initial popover. No new roles or permission
+  matrix; implement with the deferred Console UI/UX review, not this batch.
   *Accept:* current screenshots in both themes at 1100×720 and 760×480; all
   three densities checked; keyboard-only use, larger text and reduced motion
   checked; a friend finds settings, sends a file and joins voice unaided.

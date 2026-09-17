@@ -348,6 +348,17 @@ flows and do not start a new milestone. Evidence and rationale are in the
   Preserve a working fallback. Do not claim system-WebKit fixture results
   prove an AppImage works; see `docs/linux-input-checks.md`.
 
+- ⏳ **T-930 · Quiet, controllable notification chimes** — effort: **high** —
+  Matt, 2026-09-17. Extend the existing sound player. Voice-session joins,
+  leaves and moves, mic/deafen controls and DMs default on; ordinary room
+  messages default off. Join/leave refers to the listener's voice session,
+  not entering text rooms. Add category switches and one master silence
+  control; preserve quiet hours. No sound on replay/history, duplicate frames,
+  own messages or messages already being read. Never chime on PTT edges.
+  *Accept:* test routing, gating, persistence, reconnect suppression and
+  accessible settings; audition remains a real-listener check. This does not
+  implement personal entrance sounds (T-901…T-903) or redesign the Console UI.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request

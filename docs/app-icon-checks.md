@@ -55,6 +55,10 @@ stamps the bundle format into each executable, so MSI and NSIS application
 bytes legitimately differ; a whole-file equality check would be incorrect.
 `running-window-icon.png` is saved with the test artifacts for visual review.
 The script is for disposable runners, not an end-user install command.
+An empty shortcut icon path uses the target application's first icon, as
+specified by [NSIS](https://nsis.sourceforge.io/Docs/Chapter4.html#createshortcut).
+The check accepts WScript's `,0` representation of that default, but still
+rejects a different icon source.
 
 ## Evidence and remaining surfaces
 

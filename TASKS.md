@@ -276,6 +276,36 @@ flows and do not start a new milestone. Evidence and rationale are in the
   or app identity from stale OS icon caches. Check macOS when a distributable
   build is available; do not claim a platform passed from source inspection.
 
+- ⏳ **T-926 · Make file downloads clear and report failures** — effort:
+  **medium** — Matt, 2026-09-17. Reproduce the silent browser-handoff failure
+  behind attachment saving. Make the action explicit, show a useful failure
+  with a recovery path, and cover both chat and the media collection. Keep
+  untrusted downloads outside the app WebView and preserve opaque media URLs.
+  *Accept:* a failed handoff is visible and retryable; success does not claim
+  the browser has finished saving; regression tests cover both surfaces and
+  URL handling. Record what still needs installed Windows/Linux validation.
+
+  **Verification 2026-09-17:** a refused native browser handoff reproduces
+  the silent failure in a real browser regression. The fix labels the action
+  `download in browser`, reports refusal, permits retry and offers a selectable
+  link without claiming a completed save. Chat and media tests cover relative
+  and signed URLs. All 420 client tests, 29 Chromium cases, typecheck,
+  production build and the full local gate pass. CI and installed Windows/
+  Omarchy validation remain; the original desktop's refusal is not diagnosed.
+
+- ⬜ **T-927 · Clear temporary knock feedback** — effort: **medium**.
+  Reproduce the persistent sender-side `knocked` label separately from the
+  recipient card. Restore the action after brief feedback without weakening
+  server rate limits or retaining knock history. Cover timeout, failures and
+  component lifecycle; keep the real two-machine check distinct.
+
+- ⬜ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high**.
+  Reproduce Voxtype output through the actual Linux input path, compare plain
+  text input and clipboard insertion, and fix the responsible layer. Do not
+  add transcription, capture audio, collect window titles, or change global
+  desktop settings. Record an evidence-based limitation if the cause is an
+  external component rather than claiming a speculative composer fix.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request

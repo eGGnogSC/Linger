@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { Attachment } from "../generated/Attachment";
-import { openExternal } from "../lib/external";
+import DownloadFile from "./DownloadFile";
 import { absoluteUrl } from "../lib/url";
 import { durationText, fileSize, inlineBox, renderAs } from "./media";
 import "./media.css";
@@ -87,9 +87,7 @@ function One({ file, baseUrl, onExpand }: { file: Attachment; baseUrl: string; o
               server sends it as an attachment with `nosniff`, and a webview
               that navigates itself to somebody's upload has replaced the app
               with it (ARCHITECTURE §7, `lib/external.ts`). */}
-          <button type="button" className="att-get" onClick={() => openExternal(url)}>
-            save
-          </button>
+          <DownloadFile key={url} url={url} />
         </p>
       );
   }

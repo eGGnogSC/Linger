@@ -42,6 +42,7 @@ import {
   KIND_FILTERS,
 } from "./media";
 import "./media.css";
+import DownloadFile from "./DownloadFile";
 
 /** A page. Big enough that scrolling is rare, small enough to arrive fast. */
 const PAGE = 60;
@@ -400,9 +401,7 @@ function Tile({
           </button>
         ) : null}
         {file && item.kind !== "image" ? (
-          <button type="button" className="att-get" onClick={() => openExternal(absoluteUrl(baseUrl, file.url))}>
-            save
-          </button>
+          <DownloadFile key={file.url} url={absoluteUrl(baseUrl, file.url)} />
         ) : null}
       </div>
     </div>

@@ -11,7 +11,8 @@ $exe = Join-Path $install 'linger-client.exe'
 python scripts/package-icons.py --pe $installer --pe $exe --pe (Join-Path $install 'uninstall.exe')
 if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows icon mismatch' }
 
-# The MSI must contain the same executable, not a separately stale build.
+# Each bundle stamps its format into the executable, so MSI/NSIS bytes differ
+# legitimately. Check the embedded artwork independently in both packages.
 $msi = (Get-ChildItem "$Bundle/msi/*.msi" | Select-Object -First 1).FullName
 $msiRoot = Join-Path $Output 'msi'
 $extract = Start-Process msiexec.exe -ArgumentList @('/a', "`"$msi`"", '/qn', "TARGETDIR=`"$msiRoot`"") -Wait -PassThru
@@ -19,7 +20,9 @@ if ($extract.ExitCode -ne 0) { throw "MSI extraction failed: $($extract.ExitCode
 # WiX names its installed executable after productName (linger.exe), while
 # NSIS retains the Cargo binary name (linger-client.exe).
 $msiExe = Get-ChildItem $msiRoot -Recurse -Filter 'linger*.exe' | Select-Object -First 1
-if (!$msiExe -or (Get-FileHash $exe).Hash -ne (Get-FileHash $msiExe.FullName).Hash) { throw 'MSI executable differs' }
+if (!$msiExe) { throw 'MSI application executable missing' }
+python scripts/package-icons.py --pe $msiExe.FullName
+if ($LASTEXITCODE -ne 0) { throw 'MSI application icon mismatch' }
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcuts = @()

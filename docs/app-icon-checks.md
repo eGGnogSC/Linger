@@ -47,8 +47,10 @@ is a separate missing-configuration defect.
 The **package check** workflow builds unsigned Linux and Windows test packages
 when packaging or artwork changes. It never uses signing keys, creates a tag,
 publishes a release or changes the updater channel. Its Windows runner installs
-the NSIS package, checks shortcut targets, compares the MSI's application with
-the NSIS application's bytes, and reads the running app's own window icon.
+the NSIS package, checks shortcut targets, verifies the MSI application's icon
+resources independently, and reads the running app's own window icon. Tauri
+stamps the bundle format into each executable, so MSI and NSIS application
+bytes legitimately differ; a whole-file equality check would be incorrect.
 `running-window-icon.png` is saved with the test artifacts for visual review.
 The script is for disposable runners, not an end-user install command.
 

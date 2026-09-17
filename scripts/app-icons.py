@@ -62,7 +62,8 @@ def main():
         )
         output = work / "icons"
         subprocess.run(
-            ["pnpm", "tauri", "icon", str(square), "--output", str(output)],
+            ["node", str(ROOT / "client/node_modules/@tauri-apps/cli/tauri.js"),
+             "icon", str(square), "--output", str(output)],
             cwd=ROOT / "client", check=True,
         )
         # Mobile and store-specific assets are not part of the desktop bundle.

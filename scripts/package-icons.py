@@ -85,6 +85,9 @@ def check_linux(root):
     assert entry["StartupWMClass"] == "linger-client", "X11 launcher identity changed"
     for size, name in ((32, "32x32.png"), (128, "128x128.png"), (256, "128x128@2x.png")):
         installed = root / f"usr/share/icons/hicolor/{size}x{size}/apps/linger-client.png"
+        if size == 256 and not installed.exists():
+            # Current Tauri names the @2x PNG's scale directory this way.
+            installed = root / "usr/share/icons/hicolor/256x256@2/apps/linger-client.png"
         assert installed.read_bytes() == (ICONS / name).read_bytes(), f"Wrong {size}px Linux icon"
     assert (root / "usr/bin/linger-client").is_file(), "Packaged program missing"
     print("PASS Linux package: launcher identity and all three installed porch icons")

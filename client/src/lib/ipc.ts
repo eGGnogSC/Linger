@@ -19,6 +19,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { IceServer } from "../generated/IceServer";
 import type { RoomId } from "../generated/RoomId";
 import type { ServerFrame } from "../generated/ServerFrame";
+import type { VoiceControls } from "../generated/VoiceControls";
 
 export interface StoredSession {
   /** Origin of the server, e.g. `https://linger.example`. No trailing slash. */
@@ -103,9 +104,9 @@ export async function voiceLeave(baseUrl: string): Promise<void> {
 }
 
 /** Stop or resume sending the microphone. Local and yours alone (SPEC §4.14). */
-export async function voiceMute(baseUrl: string, muted: boolean): Promise<void> {
+export async function voiceControls(baseUrl: string, controls: VoiceControls): Promise<void> {
   if (!isTauri()) return;
-  await invoke("voice_mute", { baseUrl, muted });
+  await invoke("voice_controls", { baseUrl, controls });
 }
 
 /** How loud one peer (a session id) plays for you: 1 is as sent, 2 is the ceiling. */

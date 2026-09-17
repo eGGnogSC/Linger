@@ -33,7 +33,7 @@
 //! through channels and one mutex, and never block.
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -227,6 +227,7 @@ impl Source for Microphone {
 /// Mixes every peer into the default output device.
 pub struct Speaker {
     lanes: Arc<Mutex<HashMap<String, Lane>>>,
+    deafened: Arc<AtomicBool>,
     /// The device's rate. Frames arrive at `SAMPLE_RATE` and are resampled on
     /// the way into a lane if this differs, so the callback only ever copies.
     /// Atomic because the device can change under us (T-1405) and come back
@@ -268,6 +269,8 @@ impl Speaker {
         let wanted = name.map(str::to_owned);
         let lanes: Arc<Mutex<HashMap<String, Lane>>> = Arc::new(Mutex::new(HashMap::new()));
         let rate = Arc::new(AtomicU32::new(SAMPLE_RATE));
+        let deafened = Arc::new(AtomicBool::new(false));
+        let shared_deafened = Arc::clone(&deafened);
         let shared = Arc::clone(&lanes);
         let shared_rate = Arc::clone(&rate);
         let worker = Worker::start(
@@ -303,18 +306,20 @@ impl Speaker {
                 let stream = match config.sample_format() {
                     SampleFormat::I16 => {
                         let lanes = Arc::clone(&shared);
+                        let deafened = Arc::clone(&shared_deafened);
                         device.build_output_stream(
                             config.config(),
-                            move |out: &mut [i16], _| mix(&lanes, channels, out, |s| s),
+                            move |out: &mut [i16], _| mix(&lanes, &deafened, channels, out, |s| s),
                             died,
                             None,
                         )?
                     }
                     SampleFormat::F32 => {
                         let lanes = Arc::clone(&shared);
+                        let deafened = Arc::clone(&shared_deafened);
                         device.build_output_stream(
                             config.config(),
-                            move |out: &mut [f32], _| mix(&lanes, channels, out, to_f32),
+                            move |out: &mut [f32], _| mix(&lanes, &deafened, channels, out, to_f32),
                             died,
                             None,
                         )?
@@ -331,6 +336,7 @@ impl Speaker {
         )?;
         Ok(Self {
             lanes,
+            deafened,
             rate,
             _worker: worker,
         })
@@ -348,6 +354,9 @@ impl Sink for Speaker {
         let rate = self.rate.load(Ordering::Relaxed);
         let cap = (rate / 1000 * MAX_QUEUED_MS) as usize;
         let mut lanes = lock(&self.lanes);
+        if self.deafened.load(Ordering::Relaxed) {
+            return;
+        }
         let lane = lanes
             .entry(peer.to_string())
             .or_insert_with(|| Lane::new(rate));
@@ -373,6 +382,15 @@ impl Sink for Speaker {
 
     async fn forget(&self, peer: &str) {
         lock(&self.lanes).remove(peer);
+    }
+
+    async fn set_deafened(&self, deafened: bool) {
+        set_playback_deafened(
+            &self.lanes,
+            &self.deafened,
+            deafened,
+            self.rate.load(Ordering::Relaxed),
+        );
     }
 
     async fn set_volume(&self, peer: &str, volume: f32) {
@@ -407,11 +425,16 @@ fn scale(samples: &[i16], gain: f32) -> Vec<i16> {
 /// which is what a pause between words is.
 fn mix<T: Copy>(
     lanes: &Mutex<HashMap<String, Lane>>,
+    deafened: &AtomicBool,
     channels: usize,
     out: &mut [T],
     convert: impl Fn(i16) -> T,
 ) {
     let mut lanes = lock(lanes);
+    if deafened.load(Ordering::Relaxed) {
+        out.fill(convert(0));
+        return;
+    }
     for frame in out.chunks_mut(channels.max(1)) {
         let mut acc: i32 = 0;
         for lane in lanes.values_mut() {
@@ -423,6 +446,20 @@ fn mix<T: Copy>(
         let sample = acc.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
         for slot in frame {
             *slot = convert(sample);
+        }
+    }
+}
+
+fn set_playback_deafened(
+    lanes: &Mutex<HashMap<String, Lane>>,
+    gate: &AtomicBool,
+    deafened: bool,
+    rate: u32,
+) {
+    let mut lanes = lock(lanes);
+    if gate.swap(deafened, Ordering::Relaxed) != deafened {
+        for lane in lanes.values_mut() {
+            lane.retune(rate);
         }
     }
 }
@@ -841,7 +878,7 @@ mod tests {
             );
         }
         let mut out = [0i16; 8];
-        mix(&lanes, 2, &mut out, |s| s);
+        mix(&lanes, &AtomicBool::new(false), 2, &mut out, |s| s);
         // Stereo: each mixed sample lands in both slots.
         assert_eq!(out[0], i16::MAX);
         assert_eq!(out[1], i16::MAX);
@@ -852,6 +889,61 @@ mod tests {
         // Both lanes ran dry: silence, not a stale sample.
         assert_eq!(out[6], 0);
         assert_eq!(out[7], 0);
+    }
+
+    #[test]
+    fn deafen_discards_queued_voice_without_changing_personal_volume() {
+        let lanes = Mutex::new(HashMap::from([(
+            "friend".to_string(),
+            Lane {
+                queue: VecDeque::from(vec![4000; 20]),
+                resampler: None,
+                gain: 0.4,
+            },
+        )]));
+        let gate = AtomicBool::new(false);
+        set_playback_deafened(&lanes, &gate, true, SAMPLE_RATE);
+        let mut out = [123i16; 4];
+        mix(&lanes, &gate, 1, &mut out, |s| s);
+        assert_eq!(out, [0; 4]);
+        assert!(lock(&lanes)["friend"].queue.is_empty());
+        set_playback_deafened(&lanes, &gate, false, SAMPLE_RATE);
+        mix(&lanes, &gate, 1, &mut out, |s| s);
+        assert_eq!(out, [0; 4], "undeafen must not play old speech");
+        assert_eq!(lock(&lanes)["friend"].gain, 0.4);
+        lock(&lanes).get_mut("friend").unwrap().queue.push_back(800);
+        mix(&lanes, &gate, 1, &mut out, |s| s);
+        assert_eq!(out, [800, 0, 0, 0]);
+    }
+
+    #[tokio::test]
+    async fn deafened_speaker_drops_new_frames_and_new_peers() {
+        // The production speaker queue without opening a physical device.
+        let speaker = Speaker {
+            lanes: Arc::new(Mutex::new(HashMap::new())),
+            deafened: Arc::new(AtomicBool::new(false)),
+            rate: Arc::new(AtomicU32::new(SAMPLE_RATE)),
+            _worker: Worker {
+                info: (),
+                stop: None,
+            },
+        };
+        speaker.set_volume("friend", 0.5).await;
+        speaker.play("friend", &[4000; 40]).await;
+        speaker.set_deafened(true).await;
+        speaker.play("friend", &[8000; 40]).await;
+        speaker.play("new friend", &[8000; 40]).await;
+        assert_eq!(lock(&speaker.lanes).len(), 1);
+        assert!(lock(&speaker.lanes)["friend"].queue.is_empty());
+        let mut out = [99i16; 4];
+        mix(&speaker.lanes, &speaker.deafened, 1, &mut out, |s| s);
+        assert_eq!(out, [0; 4]);
+        speaker.set_deafened(false).await;
+        mix(&speaker.lanes, &speaker.deafened, 1, &mut out, |s| s);
+        assert_eq!(out, [0; 4]);
+        speaker.play("friend", &[4000; 4]).await;
+        mix(&speaker.lanes, &speaker.deafened, 1, &mut out, |s| s);
+        assert_eq!(out, [2000; 4]);
     }
 
     /// Your volume for somebody is a multiply with a ceiling, not a way to

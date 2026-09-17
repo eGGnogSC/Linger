@@ -11,6 +11,7 @@
  */
 import type { User } from "../generated/User";
 import type { VoicePeer } from "../generated/VoicePeer";
+import type { VoiceControls } from "../generated/VoiceControls";
 import type { VoiceDeviceChoice } from "../lib/ipc";
 
 const INPUT_KEY = "linger.voice.input";
@@ -77,6 +78,7 @@ export interface Seat {
   /** What to draw when there is no user to draw. */
   name: string;
   isMe: boolean;
+  controls: VoiceControls | null;
 }
 
 /**
@@ -100,6 +102,7 @@ export function seatsOf(
         user,
         name: user?.display_name ?? "somebody",
         isMe: peer.session_id === mySessionId,
+        controls: peer.controls ?? null,
       };
     })
     .sort(

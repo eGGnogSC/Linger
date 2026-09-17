@@ -352,7 +352,7 @@ async fn handle_client_frame(
         // These are client frames and the gateway has no way to answer one; a
         // client sending them is either broken or lying, and neither deserves
         // a reply. The same rule `room.focus` and `typing.start` follow.
-        ClientFrame::VoiceJoin { room_id } => {
+        ClientFrame::VoiceJoin { room_id, controls } => {
             // Voice in a room you cannot see would put you in its `voice.state`
             // in front of its members — the outward direction is covered by the
             // fan-out, this is the inward one (SPEC §4.13).
@@ -362,7 +362,9 @@ async fn handle_client_frame(
             {
                 return;
             }
-            state.gateway.voice_join(session_id, user_id, room_id);
+            state
+                .gateway
+                .voice_join(session_id, user_id, room_id, controls);
         }
         ClientFrame::VoiceLeave => state.gateway.voice_part(session_id),
         ClientFrame::VoiceSignal { to, kind, payload } => {

@@ -33,7 +33,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use linger_core::gateway::{ClientFrame, VoicePeer, VoiceSignalKind};
+use linger_core::gateway::{ClientFrame, VoiceControls, VoicePeer, VoiceSignalKind};
 use linger_core::RoomId;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -117,6 +117,7 @@ pub struct Engine<S: Signaller, W: Watcher> {
 
 #[derive(Default)]
 struct Inner {
+    controls: VoiceControls,
     /// Our own session id, once the gateway has told us. Everything about who
     /// offers depends on it, so nothing happens before it arrives.
     me: Option<String>,
@@ -150,8 +151,28 @@ impl<S: Signaller, W: Watcher> Engine<S, W> {
     /// Stop or resume sending what the microphone hears. Local, instant, and
     /// nobody else's to change (SPEC §4.14). Push-to-talk is this, toggled by
     /// a key.
-    pub fn set_muted(&self, muted: bool) {
-        self.muted.store(muted, Ordering::Relaxed);
+    pub async fn set_controls(&self, controls: VoiceControls) {
+        let controls = controls.normalized();
+        let mut inner = self.inner.lock().await;
+        // Close the mic before silencing playback; reopen it only after the
+        // speaker gate has been restored. Both choices are one serialized change.
+        if controls.muted {
+            self.muted.store(true, Ordering::Relaxed);
+        }
+        if let Some(devices) = &inner.devices {
+            devices.sink.set_deafened(controls.deafened).await;
+        }
+        self.muted.store(controls.muted, Ordering::Relaxed);
+        let changed = inner.controls != controls;
+        inner.controls = controls;
+        if changed {
+            if let Some(room_id) = inner.room {
+                self.signaller.send(ClientFrame::VoiceJoin {
+                    room_id,
+                    controls: Some(controls),
+                });
+            }
+        }
     }
 
     /// Whether we are sending silence.
@@ -192,6 +213,7 @@ impl<S: Signaller, W: Watcher> Engine<S, W> {
         let source = Arc::clone(&devices.source);
         let previous = {
             let mut inner = self.inner.lock().await;
+            devices.sink.set_deafened(inner.controls.deafened).await;
             inner.room = Some(room_id);
             inner.devices = Some(devices);
             // The server's relay for this call, or whatever the engine was built
@@ -213,7 +235,11 @@ impl<S: Signaller, W: Watcher> Engine<S, W> {
             Arc::clone(&self.muted),
         ));
         self.inner.lock().await.pump = Some(pump);
-        self.signaller.send(ClientFrame::VoiceJoin { room_id });
+        let inner = self.inner.lock().await;
+        self.signaller.send(ClientFrame::VoiceJoin {
+            room_id,
+            controls: Some(inner.controls),
+        });
     }
 
     /// Leave, and tear the mesh down whether or not the server answers.

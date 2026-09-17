@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use dashmap::DashMap;
-use linger_core::gateway::{ServerEvent, ServerFrame, VoicePeer};
+use linger_core::gateway::{ServerEvent, ServerFrame, VoiceControls, VoicePeer};
 use linger_core::limits::{MAX_VOICE_PEERS, RESUME_BUFFER_FRAMES, RESUME_WINDOW_MS};
 use linger_core::wire::{PresenceEntry, PresenceState};
 use linger_core::{RoomId, UserId};
@@ -62,6 +62,7 @@ pub struct Gateway {
 struct VoiceSeat {
     room_id: RoomId,
     user_id: UserId,
+    controls: Option<VoiceControls>,
 }
 
 /// One event on the bus, plus who it is for.
@@ -317,6 +318,7 @@ impl Gateway {
             .map(|seat| VoicePeer {
                 session_id: seat.key().clone(),
                 user_id: seat.value().user_id,
+                controls: seat.value().controls,
             })
             .collect();
         peers.sort_by(|a, b| a.session_id.cmp(&b.session_id));
@@ -336,10 +338,25 @@ impl Gateway {
     ///
     /// Answers `false` when the room is full. The caller has already checked
     /// that this person can see the room; this only knows about seats.
-    pub fn voice_join(&self, session_id: &str, user_id: UserId, room_id: RoomId) -> bool {
-        if let Some(seat) = self.voice.get(session_id) {
+    pub fn voice_join(
+        &self,
+        session_id: &str,
+        user_id: UserId,
+        room_id: RoomId,
+        controls: Option<VoiceControls>,
+    ) -> bool {
+        let controls = controls.map(VoiceControls::normalized);
+        if let Some(mut seat) = self.voice.get_mut(session_id) {
             if seat.value().room_id == room_id {
-                return true; // Already there. Asking twice is not an error.
+                let changed = controls.is_some() && controls != seat.controls;
+                if changed {
+                    seat.controls = controls;
+                }
+                drop(seat);
+                if changed {
+                    self.announce_voice(room_id);
+                }
+                return true;
             }
         }
         // Counted before the seat is taken, and only for a room this session is
@@ -349,8 +366,14 @@ impl Gateway {
             return false;
         }
         let left = self.voice_leave(session_id);
-        self.voice
-            .insert(session_id.to_string(), VoiceSeat { room_id, user_id });
+        self.voice.insert(
+            session_id.to_string(),
+            VoiceSeat {
+                room_id,
+                user_id,
+                controls,
+            },
+        );
         if let Some(previous) = left {
             self.announce_voice(previous);
         }

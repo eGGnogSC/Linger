@@ -10,27 +10,47 @@ is a server installer.
 
 ## Before you start
 
-- **A Linux computer reachable from the internet.** A VPS is easiest for a
-  first try. For example, a small Ubuntu VPS from
-  [DigitalOcean](https://www.digitalocean.com/products/droplets) works; 2 GiB
-  of memory is a reasonable test starting point, not a measured minimum. You
-  can use a computer at home, but you must also [set up your router](#hosting-at-home).
+- **A Linux computer reachable from the internet.** For a first try, follow
+  [Create an Ubuntu VPS](vps-setup.md): choosing a server, SSH keys, connecting,
+  and firewall rules. Already have a server? Start at step 1 below. At home,
+  you must also [set up your router](#hosting-at-home).
 - **A domain name** you control, or [two free dynamic-DNS names](#using-free-names).
   You need two names because uploaded files must use a different address from
   the app. A bare IP address will not work in the installed app.
-- **Docker Engine and the Compose plugin** on the server. On Ubuntu, use
-  [Docker's Ubuntu instructions](https://docs.docker.com/engine/install/ubuntu/).
-  Check that `docker compose version` works before continuing. If Docker says
-  permission denied, put `sudo` before each `docker` command below.
 
-On a VPS, connect from your computer with `ssh root@YOUR_VPS_IP`, replacing
-`YOUR_VPS_IP` with its public IP. You can also use the provider's console; some
-providers give you a username other than `root`. In the provider firewall,
-allow **TCP 80 and 443 from anywhere** so Caddy can serve HTTPS. Allow **TCP 22
-(SSH)** from your own IP if possible. If you turn on voice between different
-networks, open the extra ports in [Voice](#voice-between-different-networks).
+## 1. Install Docker on the server
 
-## 1. Point two names at the server
+Connect from **your own computer** with `ssh root@YOUR_VPS_IP`, replacing
+`YOUR_VPS_IP` with the VPS's public IP. Use your provider's username if it is
+not `root`. Commands below run **in that SSH terminal, on the server**, not on
+your own computer.
+
+For a **fresh Ubuntu 24.04 VPS**, install Ubuntu's Docker and Compose packages:
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2 curl nano
+sudo systemctl enable --now docker
+sudo docker compose version
+sudo docker info
+```
+
+**Continue only when both checks work:** Compose prints a version and
+`docker info` includes a **Server** section without a connection error.
+Use `docker.io` and `docker-compose-v2`, not `podman-docker` or the older
+`docker-compose` command. [Ubuntu packages Compose v2 with Docker](https://packages.ubuntu.com/noble/docker-compose-v2).
+
+Already have working Docker? Skip the install commands and run the two checks.
+Do not mix these packages with an existing Docker CE installation. For other
+Linux distributions, use [Docker's installation guide](https://docs.docker.com/engine/install/).
+The remaining examples assume a root SSH session. If you use another account,
+put `sudo` before each `docker` command.
+
+Before continuing, apply the [firewall rules](vps-setup.md#4-set-the-cloud-firewall):
+TCP **22** for SSH and **80/443** for the app, plus the voice ports if you want
+voice. DNS alone does not open these ports.
+
+## 2. Point two names at the server
 
 Find your VPS's **public IPv4 address** in its control panel. At your domain
 registrar, add two A records. For `example.com`, Namecheap's **Advanced DNS →
@@ -46,7 +66,7 @@ your existing `@` or `www` records. Give DNS a few minutes to catch up. If
 you're hosting at home, use your [home connection's public IPv4](#hosting-at-home)
 instead.
 
-## 2. Get the server files
+## 3. Get the server files
 
 Run these commands **on the server**, in a terminal. They make a `linger`
 folder in your current directory and put two setup files inside it:
@@ -61,19 +81,26 @@ curl -fLO https://raw.githubusercontent.com/itsMattGuenther/Linger/main/deploy/C
 The Docker images download automatically later. The app on the Releases page
 is only for people's computers.
 
-## 3. Put your names in the files
+## 4. Edit each file once
 
-Open the files with `nano compose.yaml` and `nano Caddyfile` (or another text
-editor). In `compose.yaml`, change `LINGER_DOMAIN` from `linger.example.com`
-to your main name. In `Caddyfile`, replace both example names with yours: the
-first block is for Linger and the `cdn.` block is for files. Keep them as
-**different names**. In `nano`, save with **Ctrl+O**, Enter, then **Ctrl+X**.
+Open `nano compose.yaml` and make these changes together:
 
-If your VPS has a 50 GiB disk, also uncomment `LINGER_POOL_BYTES` in
-`compose.yaml` and set it to `10GB` for the test. The default 50 GB file pool
-would leave too little space for the operating system and Docker.
+- Set `LINGER_DOMAIN` to your main name, such as `linger.example.com`, without
+  `https://`.
+- **On a 50 GiB disk**, remove the `#` before `LINGER_POOL_BYTES` and change
+  its value to `10GB`. Keep it aligned with the other environment settings.
+  The default 50 GB file pool leaves too little room for Ubuntu and Docker.
+- **If you want voice**, also change `--realm=linger.example.com` to that
+  same main name. The remaining [voice steps](#voice-between-different-networks)
+  add a secret and start the relay.
 
-## 4. Start the server
+Save with **Ctrl+O**, Enter, then **Ctrl+X**.
+
+Next, open `nano Caddyfile`. Replace both example names: the first block uses
+your main name, and the `cdn.` block uses your file name, such as
+`cdn.linger.example.com`. Keep them as **different names**. Save and exit.
+
+## 5. Start the server
 
 Still inside the `linger` folder, run:
 
@@ -92,7 +119,7 @@ https://linger.example.com/setup?token=…
 ```
 
 Keep the entire link, including `?token=…`, private. Paste it into the Linger
-desktop app in step 5, **not a browser**. Restarting Linger before you use the
+desktop app in step 6, **not a browser**. Restarting Linger before you use the
 link creates a new one and invalidates the old one. If you accidentally share
 the link, restart Linger to replace it.
 
@@ -104,7 +131,7 @@ From **your own computer**, check the address before opening the app:
 yours). If it does not return a short JSON response, use
 [the connection checklist](#the-app-cannot-reach-the-server) first.
 
-## 5. Make your host account
+## 6. Make your host account
 
 [Install and open the app](user-guide.md#installing-linger) on your own computer.
 Paste the **whole setup link** into the *server or link* box and press
@@ -116,16 +143,16 @@ If the app says it cannot reach the server, check
 for a new token. The desktop app does not start when you run Docker commands;
 open it again the same way you installed it.
 
-## 6. Invite people
+## 7. Invite people
 
-In the left rail, next to the word *SERVER*, you have two small controls nobody
-else sees: **manage** and **+ room**. Press **manage**, then **invites → make a
-link**. You choose how many people it is good for and when it expires; the link
+In the left rail, press **manage** beside *SERVER*, then **invites → make a
+link**. Only the host sees **manage**. You choose how many people the invite
+is good for and when it expires; the link
 is copied for you the moment it is made. Send it however you normally talk to
 your friends.
 
-Before that, make a room: the empty screen offers **make the first room**, and
-so does **+ room**. A room needs a short name for after the `#` and, if you
+Before that, make a room: use **make the first room** on the empty screen, or
+**+ room** beside *ROOMS* in the left rail. A room needs a short name for after the `#` and, if you
 like, a topic.
 
 An invite link is the only way to get an account. There is no public sign-up.
@@ -231,8 +258,9 @@ Run these steps **on the server**, inside the `linger` folder containing
 2. Run `openssl rand -hex 32`, then open `nano .env`. Paste the generated value
    after `LINGER_TURN_SECRET=`. Save with **Ctrl+O**, Enter, then **Ctrl+X**.
    Keep it private. Compose gives the same secret to Linger and coturn.
-3. In `compose.yaml`, change `--realm=linger.example.com` to your server's
-   name, without `https://` (for example, `--realm=linger.example.org`).
+3. If you did not already set the realm in step 4 of the host setup, change
+   `--realm=linger.example.com` in `compose.yaml` to your server's name,
+   without `https://` (for example, `--realm=linger.example.org`).
 4. Allow inbound port **3478**, both TCP and UDP, and UDP ports **49160 to
    49200** in the provider's firewall and any firewall on the server. Keep
    TCP **80 and 443** open too. (If the machine is behind a home
@@ -375,7 +403,7 @@ Do not share your `.env` or setup token when asking for help.
 
 - **`unable to open database file` repeats in Linger's log.** The `data`
   folder is not writable by the container. Run the permission command in
-  step 4, then `docker compose up -d` again. It does not delete the database.
+  step 5, then `docker compose up -d` again. It does not delete the database.
 - **Chat works but uploads fail.** The `cdn.` record is missing, or the second
   block of the Caddyfile still says `linger.example.com`.
 - **`docker compose pull` says `unauthorized`.** The prebuilt image is not

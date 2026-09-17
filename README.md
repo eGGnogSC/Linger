@@ -172,8 +172,10 @@ quietly in the status bar, and downloads nothing until you ask it to under
 ## 🚀 Running a server
 
 **[The host guide](docs/host-guide.md) is the step-by-step path**, including a
-VPS-first route, DNS, firewall ports, first-run setup, and the home-router
-alternative. This is the short version for someone who already has Docker:
+VPS-first route, a numbered Ubuntu Docker install step, DNS, first-run setup,
+and the home-router alternative. [Creating your first VPS](docs/vps-setup.md)
+covers SSH keys and the cloud firewall. This is the short version for someone
+who already has Docker:
 
 ```bash
 cd deploy

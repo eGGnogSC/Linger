@@ -5,12 +5,14 @@ use tauri::AppHandle;
 
 fn silent_banner(title: &str, body: &str) -> notify_rust::Notification {
     let mut notification = notify_rust::Notification::new();
-    notification.summary(title).body(body).icon("linger");
+    notification.summary(title).body(body);
     // Windows' notify-rust backend sets Toast::sound(None), which requests
     // silent playback. macOS receives no sound name. Linux needs the hint:
     // https://docs.rs/notify-rust/latest/notify_rust/enum.Hint.html
     #[cfg(target_os = "linux")]
-    notification.hint(notify_rust::Hint::SuppressSound(true));
+    notification
+        .icon("linger-client")
+        .hint(notify_rust::Hint::SuppressSound(true));
     notification
 }
 
@@ -52,6 +54,7 @@ mod tests {
     #[test]
     fn linux_banner_explicitly_suppresses_the_daemons_sound() {
         let banner = silent_banner("a room", "a message");
+        assert_eq!(banner.icon, "linger-client");
         assert!(banner
             .hints
             .contains(&notify_rust::Hint::SuppressSound(true)));

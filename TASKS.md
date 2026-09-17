@@ -243,7 +243,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   per launch. No new installation or real-machine upgrade was performed;
   HC-1 and all other open release checks remain open.
 
-- ⏳ **T-924 · Fit expanded images to the window** — effort: **medium** —
+- ✅ **T-924 · Fit expanded images to the window** — effort: **medium** —
   Matt, 2026-09-17. Reproduce the clipped preview inside a transformed message
   row, then keep expansion centered in the viewport with the image's aspect
   ratio intact. Do not change message loading or virtualization.
@@ -251,6 +251,19 @@ flows and do not start a new milestone. Evidence and rationale are in the
   after it; portrait, landscape, small images and long filenames fit large
   and small windows, including resizing while open. Escape/click dismissal
   and keyboard focus remain usable. No new runtime dependencies or wire types.
+
+  **Completed 2026-09-17** (PR #69, awaiting merge after #68). The browser
+  regression reproduced a preview positioned inside the transformed message
+  row instead of the viewport. Expansion now uses a body portal, preserves
+  aspect ratio, fits both dimensions on resize and contains long filenames.
+  A visible close control, keyboard focus containment and focus return cover
+  keyboard use. The regression fails before the fix and passes after it;
+  all 50 Chromium/WebKit cases pass across both themes, three densities and
+  three window sizes. All 413 existing client tests, typecheck, production
+  build, the complete local `scripts/check.sh` gate and CI pass. The browser
+  tooling is development-only. Packaged Omarchy/Windows checks remain human
+  validation; no release checks were closed. T-925 records the separate icon
+  report without adding it to this implementation.
 
 - ⬜ **T-925 · Use the selected app icon on every desktop surface** — effort:
   **medium**. The running Windows app was reported without the chosen icon;

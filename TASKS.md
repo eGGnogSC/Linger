@@ -1010,6 +1010,16 @@ them, and cmake installs fine in user space.
 
 ---
 
+- ⏳ **T-1406 · Keep the shipped voice relay starting** — effort: **medium** —
+  Matt, 2026-09-17. The onboarding test found that `coturn/coturn:4` rejects
+  the shipped `--no-dtls` flag and repeatedly exits. Remove the obsolete flag,
+  test the actual Compose command against the image, and make the host guide
+  distinguish a running relay from a restarting or missing one. Keep the
+  README's server instructions accurate.
+  *Accept:* the shipped relay stays running with a test secret, refuses an
+  empty secret, and CI exercises that startup path. No client or protocol
+  changes. HC-8 and HC-9 remain open; a startup test is not a voice-call test.
+
 ### M13 — ambient voice
 
 *Milestone check: leave a room running for a working day; it costs almost no

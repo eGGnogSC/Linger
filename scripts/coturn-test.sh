@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Exercise the shipped image, entrypoint and command, not a second copy of them.
+# Requires Docker Engine + Compose. No host ports, real secrets or server data.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+project="linger-coturn-test-$$"
+# Override any caller's secret; do not read deploy/.env.
+export LINGER_TURN_SECRET=linger-startup-test-only-not-a-real-secret
+compose() {
+  docker compose --env-file /dev/null --project-name "$project" \
+    -f deploy/compose.yaml -f - --profile voice "$@" <<'YAML'
+services:
+  coturn:
+    # Isolate the test from the host network; publish no ports.
+    network_mode: bridge
+    restart: "no"
+YAML
+}
+
+cleanup() {
+  compose down --volumes >/dev/null
+}
+trap cleanup EXIT
+
+compose pull coturn
+compose up -d --no-deps coturn
+container="$(compose ps -a -q coturn)"
+if [[ -z "$container" ]]; then
+  echo "coturn container was not created" >&2
+  exit 1
+fi
+docker image inspect "$(docker inspect --format '{{.Image}}' "$container")" \
+  --format 'tested image: {{json .RepoDigests}}'
+
+# `up -d` can succeed just before the process exits. Watch beyond startup.
+for _ in {1..15}; do
+  state="$(docker inspect --format '{{.State.Status}} {{.RestartCount}}' "$container")"
+  if [[ "$state" != "running 0" ]]; then
+    echo "coturn did not stay running: $state" >&2
+    compose logs --no-color coturn >&2
+    exit 1
+  fi
+  sleep 1
+done
+echo "coturn stayed running without restarts"
+
+# The same entrypoint must still reject a missing shared secret.
+if output="$(compose run --rm --no-deps -e LINGER_TURN_SECRET= coturn 2>&1)"; then
+  echo "coturn accepted an empty secret" >&2
+  exit 1
+fi
+if [[ "$output" != *"coturn: LINGER_TURN_SECRET is empty."* ]]; then
+  printf 'unexpected empty-secret failure:\n%s\n' "$output" >&2
+  exit 1
+fi
+echo "coturn refused an empty secret"

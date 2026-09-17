@@ -51,6 +51,15 @@ jobs:
             echo 'source=false' >> "$GITHUB_OUTPUT"
           fi
 
+  coturn:
+    needs: changes
+    if: ${{ needs.changes.outputs.source == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shipped relay starts and refuses an empty secret
+        run: bash scripts/coturn-test.sh
+
   rust:
     needs: changes
     if: ${{ needs.changes.outputs.source == 'true' }}

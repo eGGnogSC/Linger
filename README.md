@@ -274,13 +274,18 @@ sudo pacman -S webkit2gtk-4.1 gtk3 librsvg alsa-lib cmake
 **Before pushing code, run `scripts/check.sh`.** It runs what CI runs, in the
 order CI runs it — rules lint, version check, fmt, clippy, workspace tests,
 bindings drift, frontend, and the desktop shell. Green there should mean green
-in CI. The one thing it leaves out is `scripts/minio-test.sh`, which tests the
-S3 storage backend against a throwaway MinIO; `cargo test --workspace` skips
-that code entirely, so it proves nothing about S3 on its own.
+in CI. Two separate checks need additional services:
+
+- `scripts/minio-test.sh` tests S3 against a throwaway MinIO. The workspace
+  tests skip S3 without that service.
+- `bash scripts/coturn-test.sh` needs Docker Engine and Compose. It checks
+  that the shipped voice relay starts and refuses an empty secret, without
+  opening host ports or using your server data. CI runs this too; it does not
+  replace the voice checks on separate networks.
 
 For a **documentation-only** change, run `scripts/lint-rules.sh` and
 `scripts/version-check.sh`. CI still runs those quick checks, but skips the
-Rust, S3, web, and desktop jobs. Any change outside `docs/`, Markdown files,
+Rust, S3, web, desktop, and relay jobs. Any change outside `docs/`, Markdown files,
 or `LICENSE` runs the full suite.
 
 For real desktop interaction, `python3 scripts/desktop-check.py` runs three

@@ -1174,6 +1174,30 @@ them, and cmake installs fine in user space.
   this fix, using a temporary toolchain. HC-8 and HC-9 remain open; merging
   the startup fix does not close the real-network voice checks.
 
+- ⏳ **T-1407 · Shared mute state and deafen** — effort: **high** — Matt,
+  2026-09-17. Show each voice session's self-reported mute/deafen state.
+  Deafen silences incoming voice and mutes the microphone together; undeafen
+  restores the previous mic choice (push-to-talk stays closed until pressed).
+  Nobody can change another person's controls. Keep room/DM membership
+  filtering and old-client compatibility; unknown legacy state is not “live”.
+  *Accept:* real gateway tests cover isolation, resume and legacy joins;
+  native audio tests cover both directions, queued playback and restoration;
+  client tests cover controls and visible states. Record real-device checks
+  separately; do not close HC-8/HC-9 from local automation.
+
+  **2026-09-17 implementation:** additive controls on `voice.join` and
+  `voice.state`; old clients remain usable and their state is shown as unknown.
+  The native encoder and speaker gate enforce deafen before reporting it;
+  queued and newly arriving audio is discarded without losing peer volumes.
+  Undeafen restores the prior mic choice, with push-to-talk closed until a new
+  press. Controls survive moves and disappear on leave. Gateway tests cover
+  same-person session isolation, normalization, legacy joins, DM privacy and
+  replay across a forced disconnect. Native tests cover tone/silence, playback
+  queues and restoration; browser tests exercise the real controls. The full
+  local gate, 425 client tests, 42 Chromium cases, typecheck and production
+  build pass. CI results will be recorded before closing this task. Installed Linux/
+  Windows listening and the existing real-network checks remain open.
+
 ### M13 — ambient voice
 
 *Milestone check: leave a room running for a working day; it costs almost no

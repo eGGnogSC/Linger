@@ -399,8 +399,12 @@ async fn voice_join(
 /// Stop or resume sending the microphone. Yours alone (SPEC §4.14); the
 /// surface's mute button and its push-to-talk key both land here.
 #[tauri::command]
-async fn voice_mute(app: AppHandle, base_url: String, muted: bool) {
-    engine_for(&app, &base_url).set_muted(muted);
+async fn voice_controls(
+    app: AppHandle,
+    base_url: String,
+    controls: linger_core::gateway::VoiceControls,
+) {
+    engine_for(&app, &base_url).set_controls(controls).await;
 }
 
 /// How loud one peer plays for you, 1.0 being as sent.
@@ -478,7 +482,7 @@ pub fn run() {
             voice_join,
             voice_leave,
             voice_frame,
-            voice_mute,
+            voice_controls,
             voice_volume,
             voice_devices,
             updates::app_version,

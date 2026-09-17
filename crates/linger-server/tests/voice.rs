@@ -85,6 +85,67 @@ async fn join_voice(ws: &mut Ws, room: &str) {
     send_json(ws, json!({ "op": "voice.join", "d": { "room_id": room } })).await;
 }
 
+async fn controls(ws: &mut Ws, room: &str, muted: bool, deafened: bool) {
+    send_json(
+        ws,
+        json!({"op":"voice.join", "d":{
+            "room_id":room, "controls":{"muted":muted, "deafened":deafened}
+        }}),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn controls_are_session_scoped_normalized_and_legacy_safe() {
+    let (server, host, room) = common::server_with_room("garage").await;
+    let room = room.id.to_string();
+    // Two sessions of one person must not control one another.
+    let (mut a, a_id) = connect(&server, &host.access_token).await;
+    let (mut b, b_id) = connect(&server, &host.access_token).await;
+    join_voice(&mut a, &room).await;
+    join_voice(&mut b, &room).await;
+    drain(&mut b, SETTLE).await;
+    controls(&mut a, &room, false, true).await;
+    let frames = drain(&mut b, SETTLE).await;
+    let peers = voice_state(&frames, &room).unwrap()["d"]["peers"]
+        .as_array()
+        .unwrap();
+    let mine = peers.iter().find(|p| p["session_id"] == a_id).unwrap();
+    assert_eq!(mine["controls"], json!({"muted":true,"deafened":true}));
+    assert!(peers
+        .iter()
+        .find(|p| p["session_id"] == b_id)
+        .unwrap()
+        .get("controls")
+        .is_none());
+    // Legacy duplicate joins and identical reports do not erase state or emit noise.
+    join_voice(&mut a, &room).await;
+    controls(&mut a, &room, true, true).await;
+    assert!(voice_state(&drain(&mut b, SETTLE).await, &room).is_none());
+    controls(&mut b, &room, false, false).await;
+    let frames = drain(&mut b, SETTLE).await;
+    assert_eq!(
+        voice_state(&frames, &room).unwrap()["d"]["peers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["session_id"] == a_id)
+            .unwrap()["controls"]["deafened"],
+        true
+    );
+    send_json(&mut a, json!({"op":"voice.leave","d":null})).await;
+    join_voice(&mut a, &room).await;
+    let frames = drain(&mut b, SETTLE).await;
+    assert!(voice_state(&frames, &room).unwrap()["d"]["peers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["session_id"] == a_id)
+        .unwrap()
+        .get("controls")
+        .is_none());
+}
+
 /// The newest `voice.state` for a room in a batch of frames, if there is one.
 fn voice_state<'a>(frames: &'a [Value], room: &str) -> Option<&'a Value> {
     frames
@@ -406,6 +467,8 @@ async fn a_resumed_session_keeps_its_seat_and_replays_what_it_missed() {
     drop(b);
     tokio::time::sleep(SETTLE).await;
 
+    controls(&mut a, &room_id, true, true).await;
+
     // A signals into the gap. Nothing is listening, and the ring buffer holds it.
     send_json(
         &mut a,
@@ -449,6 +512,16 @@ async fn a_resumed_session_keeps_its_seat_and_replays_what_it_missed() {
         .find(|f| f["op"] == "voice.signal")
         .expect("the signal sent while away was replayed");
     assert_eq!(offer["d"]["payload"], "sent while away");
+    let replayed_state = voice_state(&replayed, &room_id).expect("control change replayed");
+    assert_eq!(
+        replayed_state["d"]["peers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["session_id"] == a_id)
+            .unwrap()["controls"],
+        json!({"muted":true,"deafened":true})
+    );
 
     // And the exchange finishes across the seam: B answers on the new socket
     // and A hears it, which is what "a full exchange across a forced reconnect"
@@ -549,6 +622,17 @@ async fn voice_in_a_dm_is_invisible_to_everybody_else() {
         !serde_json::to_string(&his).unwrap().contains(&dm_id),
         "voice in a DM leaked its room to a stranger: {his:?}"
     );
+
+    controls(&mut a, &dm_id, true, true).await;
+    let changes = drain(&mut c, SETTLE).await;
+    assert_eq!(
+        voice_state(&changes, &dm_id).unwrap()["d"]["peers"][0]["controls"]["deafened"],
+        true
+    );
+    assert!(voice_state(&drain(&mut d, SETTLE).await, &dm_id).is_none());
+    // A non-member cannot use a control report to enter the private voice room.
+    controls(&mut d, &dm_id, false, false).await;
+    assert!(voice_state(&drain(&mut c, SETTLE).await, &dm_id).is_none());
 }
 
 #[tokio::test]

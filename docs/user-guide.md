@@ -253,9 +253,19 @@ While you are in:
 
 - **mute** stops sending, instantly, and nobody else can change it. Nobody can
   mute you either, and nobody can turn your microphone on.
+- **deafen** silences incoming voice and mutes your microphone together.
+  **undeafen** restores your previous mic choice; with push-to-talk, press
+  `ctrl` again to speak. Deafen does not change notification sounds.
+- Names show **muted** or **deafened** when that person shares their state.
+  **mic state unknown** means their client or the server needs an update.
+  An unmuted microphone is not a guarantee somebody is listening.
 - The small slider beside each name is **how loud they are for you**. It never
   leaves your computer.
 - **leave voice** turns the microphone off. Closing the app does too.
+
+Moving voice to another room keeps your mute/deafen choices. Leaving and
+joining starts a fresh session. Your per-person volume settings are unaffected
+by deafen, and missed speech is discarded rather than played when you return.
 
 **Push to talk** is in settings → voice. With it on, every call starts muted and
 the microphone is open only while you hold `ctrl`. It is off by default because

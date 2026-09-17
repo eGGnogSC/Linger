@@ -52,7 +52,7 @@ import {
   voiceFrame,
   voiceJoin,
   voiceLeave,
-  voiceMute,
+  voiceControls,
   voiceVolume,
 } from "./ipc";
 import type { IceServers } from "../generated/IceServers";
@@ -199,8 +199,8 @@ export interface GatewayState {
   voice: Record<string, VoicePeer[]>;
   /**
    * Our own seat, while we have one. Local state: the server knows we are
-   * in voice, and nothing else here — mute, who we can hear, what our own
-   * microphone is doing — is ours and stays on this machine (SPEC §4.14).
+   * in voice and our self-reported controls. Device health, speaking levels
+   * and per-person volume remain local (SPEC §4.14).
    */
   myVoice: MyVoice | null;
 }
@@ -210,6 +210,10 @@ export interface MyVoice {
   roomId: RoomId;
   /** Sending silence. Yours; nobody else can set it. */
   muted: boolean;
+  deafened: boolean;
+  /** Mic choice to restore after deafen; push-to-talk restores closed. */
+  mutedBeforeDeafen: boolean;
+  pushToTalk: boolean;
   /**
    * What the core says the microphone is doing: `opening` until the
    * devices are open, `sending` while frames flow, `stopped` if the device
@@ -1529,8 +1533,12 @@ export async function joinVoice(
   startMuted: boolean,
 ): Promise<void> {
   const server = api.baseUrl;
+  // A queued deafen must take effect before its choice is carried to another room.
+  await Promise.all([...controlQueues.values()].map((pending) => pending.catch(() => undefined)));
   const current = stateOf(server);
   if (current.sessionId === null) throw new Error("Not connected yet.");
+  const previous = Object.values(states).find((state) => state.myVoice !== null)?.myVoice;
+  if (current.myVoice?.roomId === roomId) return;
   for (const [other, state] of Object.entries(states)) {
     if (state.myVoice !== null && (other !== server || state.myVoice.roomId !== roomId)) {
       await leaveVoice(other);
@@ -1540,7 +1548,10 @@ export async function joinVoice(
     ...stateOf(server),
     myVoice: {
       roomId,
-      muted: startMuted,
+      muted: previous?.deafened || startMuted || previous?.muted || false,
+      deafened: previous?.deafened ?? false,
+      mutedBeforeDeafen: startMuted || (previous?.mutedBeforeDeafen ?? false),
+      pushToTalk: startMuted,
       audio: "opening",
       peers: {},
       speaking: {},
@@ -1549,7 +1560,9 @@ export async function joinVoice(
     },
   });
   try {
-    await voiceMute(server, startMuted);
+    const mine = stateOf(server).myVoice;
+    if (mine === null) return;
+    await voiceControls(server, { muted: mine.muted, deafened: mine.deafened });
     // The host's relay, if there is one (T-1403): STUN and TURN with a
     // password made for us just now. Asked on every join because the password
     // expires, and asked *before* the peer connections exist because ICE has
@@ -1570,17 +1583,55 @@ export async function joinVoice(
 export async function leaveVoice(server: string): Promise<void> {
   const current = stateOf(server);
   if (current.myVoice !== null) publish(server, { ...current, myVoice: null });
+  await controlQueues.get(server)?.catch(() => undefined);
   await voiceLeave(server);
 }
 
-/** Mute is yours, local, and instant (SPEC §4.14). Push-to-talk is this, on a key. */
-export function setVoiceMuted(server: string, muted: boolean): void {
-  const current = stateOf(server);
-  if (current.myVoice === null) return;
-  if (current.myVoice.muted !== muted) {
-    publish(server, { ...current, myVoice: { ...current.myVoice, muted } });
-  }
-  void voiceMute(server, muted);
+const controlQueues = new Map<string, Promise<void>>();
+
+/** Serialize rapid clicks and push-to-talk edges; never announce an unapplied mute. */
+function changeVoiceControls(server: string, change: (mine: MyVoice) => MyVoice): Promise<void> {
+  const task = (controlQueues.get(server) ?? Promise.resolve()).catch(() => undefined).then(async () => {
+    const mine = stateOf(server).myVoice;
+    if (mine === null) return;
+    const next = change(mine);
+    if (next === mine) return;
+    try {
+      await voiceControls(server, { muted: next.muted, deafened: next.deafened });
+    } catch {
+      publish(server, { ...stateOf(server), myVoice: null });
+      try { await voiceLeave(server); } catch {
+        throw new Error("Couldn't change voice controls or confirm voice stopped. Close the app to stop audio.");
+      }
+      throw new Error("Couldn't change voice controls. Voice was disconnected; join again to retry.");
+    }
+    const current = stateOf(server);
+    if (current.myVoice === null) return;
+    publish(server, { ...current, myVoice: {
+      ...current.myVoice, muted: next.muted, deafened: next.deafened,
+      mutedBeforeDeafen: next.mutedBeforeDeafen,
+    } });
+  });
+  controlQueues.set(server, task);
+  void task.finally(() => {
+    if (controlQueues.get(server) === task) controlQueues.delete(server);
+  }).catch(() => undefined);
+  return task;
+}
+
+/** Mute belongs to this session. While deafened, neither clicks nor PTT can reopen it. */
+export function setVoiceMuted(server: string, muted: boolean): Promise<void> {
+  return changeVoiceControls(server, (mine) => mine.deafened || mine.muted === muted
+    ? mine : { ...mine, muted });
+}
+
+/** Silence both directions, preserving the prior mic choice and every peer's volume. */
+export function setVoiceDeafened(server: string, deafened: boolean): Promise<void> {
+  return changeVoiceControls(server, (mine) => mine.deafened === deafened ? mine : {
+    ...mine, deafened,
+    mutedBeforeDeafen: deafened ? mine.muted : mine.mutedBeforeDeafen,
+    muted: deafened || mine.pushToTalk || mine.mutedBeforeDeafen,
+  });
 }
 
 /** How loud one peer plays for you. Never leaves this machine. */

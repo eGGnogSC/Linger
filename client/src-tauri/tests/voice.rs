@@ -19,7 +19,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use linger_client_lib::voice::audio::{self, Devices, Discard, Silence, Sink, Tone};
 use linger_client_lib::voice::{Engine, Signaller, Watcher};
-use linger_core::gateway::{ClientFrame, VoicePeer, VoiceSignalKind};
+use linger_core::gateway::{ClientFrame, VoiceControls, VoicePeer, VoiceSignalKind};
 use linger_core::{RoomId, UserId};
 use tokio::sync::mpsc;
 
@@ -60,6 +60,65 @@ type Rig = (
     Arc<Log>,
 );
 
+#[tokio::test]
+async fn deafen_gates_both_directions_and_reports_after_applying() {
+    #[derive(Default)]
+    struct Gate(std::sync::atomic::AtomicBool);
+    #[async_trait]
+    impl Sink for Gate {
+        async fn play(&self, _: &str, _: &[i16]) {}
+        async fn set_deafened(&self, value: bool) {
+            self.0.store(value, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+    let (engine, mut rx, _) = engine("a").await;
+    let gate = Arc::new(Gate::default());
+    let room = RoomId::new();
+    engine
+        .join(
+            room,
+            Devices {
+                source: Arc::new(Silence),
+                sink: gate.clone(),
+            },
+            vec![],
+        )
+        .await;
+    while rx.try_recv().is_ok() {}
+    engine
+        .set_controls(VoiceControls {
+            muted: false,
+            deafened: true,
+        })
+        .await;
+    assert!(
+        engine.is_muted(),
+        "deafen closes the microphone even with muted=false"
+    );
+    assert!(gate.0.load(std::sync::atomic::Ordering::SeqCst));
+    assert!(matches!(
+        rx.try_recv().unwrap(),
+        ClientFrame::VoiceJoin {
+            controls: Some(VoiceControls {
+                muted: true,
+                deafened: true
+            }),
+            ..
+        }
+    ));
+    engine
+        .set_controls(VoiceControls {
+            muted: true,
+            deafened: false,
+        })
+        .await;
+    assert!(engine.is_muted());
+    assert!(!gate.0.load(std::sync::atomic::Ordering::SeqCst));
+    engine.set_controls(VoiceControls::default()).await;
+    assert!(!engine.is_muted());
+    engine.leave().await;
+}
+
 async fn engine(session: &str) -> Rig {
     let (tx, rx) = mpsc::unbounded_channel();
     let log = Arc::new(Log::default());
@@ -80,6 +139,7 @@ fn peers(ids: &[&str]) -> Vec<VoicePeer> {
         .map(|id| VoicePeer {
             session_id: (*id).to_string(),
             user_id: UserId::new(),
+            controls: None,
         })
         .collect()
 }
@@ -536,7 +596,11 @@ async fn muting_sends_silence_and_the_mark_follows() {
     );
 
     // Mute: the frames keep arriving and they are quiet.
-    a.set_muted(true);
+    a.set_controls(VoiceControls {
+        muted: true,
+        deafened: false,
+    })
+    .await;
     assert!(a.is_muted());
     let before = recorder.frames().len();
     assert!(
@@ -551,7 +615,7 @@ async fn muting_sends_silence_and_the_mark_follows() {
     );
 
     // Unmute: the tone is back on the same connection.
-    a.set_muted(false);
+    a.set_controls(VoiceControls::default()).await;
     let before = recorder.frames().len();
     assert!(
         heard_after(&recorder, before + 25).await,
@@ -563,6 +627,20 @@ async fn muting_sends_silence_and_the_mark_follows() {
         "the tone did not come back: rms {}",
         rms(&loud)
     );
+
+    // Deafen also sends silence, even when a caller requests an unmuted mic.
+    a.set_controls(VoiceControls {
+        muted: false,
+        deafened: true,
+    })
+    .await;
+    let before = recorder.frames().len();
+    assert!(heard_after(&recorder, before + 25).await);
+    assert!(rms(&recorder.frames().last().unwrap().1) < 200.0);
+    a.set_controls(VoiceControls::default()).await;
+    let before = recorder.frames().len();
+    assert!(heard_after(&recorder, before + 25).await);
+    assert!(rms(&recorder.frames().last().unwrap().1) > 2000.0);
 
     // B's watcher saw A talk, go quiet, and talk again — each change once.
     let marks = ears.0.lock().unwrap().clone();

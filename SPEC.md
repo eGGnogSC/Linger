@@ -488,9 +488,19 @@ the encrypted stream, which it cannot read, and the server's only part is handin
 member a short-lived password for it at the moment they join. A host who runs no relay
 has voice that works within one network and nowhere else, and is told so at startup.
 
-**Your microphone is yours.** Push-to-talk and mute are per-person and local; nobody can
-mute anybody else, and nobody can turn anybody's microphone on. A permission that lets
-one person silence another is a role by another name (§2).
+**Your microphone is yours.** Nobody can mute anybody else or turn anybody's
+microphone on. Mute stops your outgoing voice. Deafen stops all incoming voice
+and mutes your microphone together. Undeafening restores your previous mic
+choice; with push-to-talk it stays closed until you press the key again.
+Deafen does not change per-person volume or notification preferences. Its
+speaker gate discards queued audio, so undeafening never plays missed speech.
+
+The room can see each session's self-reported `muted` or `deafened` state,
+filtered by the same membership rule as voice itself. It is not proof someone
+is listening: an older client or server reports no state, and the UI says so.
+These controls last for the voice session, not in the database. Device failure
+and connection failure remain separate from a deliberate mute. Moving voice
+keeps your mute/deafen choices; leaving and joining starts afresh.
 
 **Leaving is leaving.** Closing the app, losing the network, or joining voice somewhere
 else all end it, and the people you were talking to see you go. You are in voice in at

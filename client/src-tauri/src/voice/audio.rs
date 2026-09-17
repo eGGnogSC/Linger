@@ -64,6 +64,10 @@ pub trait Source: Send + Sync + 'static {
 pub trait Sink: Send + Sync + 'static {
     async fn play(&self, peer: &str, samples: &[i16]);
 
+    /// Gate all voice playback, discarding queued samples while deafened.
+    /// A sink with no playback (such as `Discard`) need not implement this.
+    async fn set_deafened(&self, _deafened: bool) {}
+
     /// The peer has gone; drop whatever was queued for them. A sink that keeps
     /// no state per peer can ignore this.
     async fn forget(&self, _peer: &str) {}

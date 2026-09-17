@@ -243,6 +243,15 @@ flows and do not start a new milestone. Evidence and rationale are in the
   per launch. No new installation or real-machine upgrade was performed;
   HC-1 and all other open release checks remain open.
 
+- ⏳ **T-924 · Fit expanded images to the window** — effort: **medium** —
+  Matt, 2026-09-17. Reproduce the clipped preview inside a transformed message
+  row, then keep expansion centered in the viewport with the image's aspect
+  ratio intact. Do not change message loading or virtualization.
+  *Accept:* real browser regression coverage fails before the fix and passes
+  after it; portrait, landscape, small images and long filenames fit large
+  and small windows, including resizing while open. Escape/click dismissal
+  and keyboard focus remain usable. No new runtime dependencies or wire types.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request

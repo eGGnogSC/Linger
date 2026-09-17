@@ -3,72 +3,108 @@
 Linger is a small, private place for a group of friends to hang out. Somebody
 you know runs the server; you install the app and connect to it.
 
-If you are the one running the server, you want the
-[host guide](host-guide.md) instead.
+**Joining for the first time? Ask your host for an invite link.** A server
+address alone takes you to sign-in; it cannot create an account. If you are
+setting up a new server yourself, keep the private setup link from the
+[host guide](host-guide.md). Install the app on your own computer, not the VPS.
 
 ---
 
 ## Installing Linger
 
-Open the [latest release](https://github.com/itsMattGuenther/Linger/releases/latest)
-and choose **one** app file for your computer. Your host runs the server
-separately; you do not need a server download.
+Open the [latest release](https://github.com/itsMattGuenther/Linger/releases/latest),
+expand **Assets** if needed, and download **one** file from this table. The
+current installers are for 64-bit Intel/AMD computers (`x64`, `x86_64` and
+`amd64` mean the same thing here, including Intel PCs).
 
-| Your computer | Download |
+| Your computer | Download and next step |
 |---|---|
-| Windows | `.exe` |
-| Ubuntu, Debian, Mint | `.deb` |
-| Fedora, RHEL, openSUSE | `.rpm` |
-| Arch, Omarchy, or another Linux | `.AppImage` |
+| Windows | File ending in `x64-setup.exe` → [Windows](#windows) |
+| Ubuntu, Debian, Mint | File ending in `amd64.deb` → [Linux packages](#linux-packages) |
+| Fedora or openSUSE | File ending in `x86_64.rpm` → [Linux packages](#linux-packages) |
+| Omarchy, Arch, or other Linux | File ending in `amd64.AppImage` → [AppImage](#linux-appimage-including-omarchy) |
 
-The `.msi` is another Windows installer. Files ending in `.sig` and
-`latest.json` are for updates, not for manual installation. There is no macOS
-installer yet.
+You do **not** need `.sig`, `latest.json`, or the source-code ZIP/tar files.
+The `.msi` is an alternative Windows installer, not an extra required download.
+There are no macOS or ARM desktop installers yet.
 
-**Arch or Omarchy:** if the AppImage needs FUSE and your system does not have
-it, install `fuse2` (`omarchy pkg add fuse2` on Omarchy, or
-`sudo pacman -S fuse2` on Arch). `fuse3` alone may not be enough.
+### Windows
 
-**Run the AppImage.** Here is an example for a file downloaded into `Downloads`.
-Use the *actual filename* you downloaded if its version is different:
+1. Open the downloaded `.exe` and follow the installer.
+2. If SmartScreen says **Windows protected your PC**, check that the file came
+   from the official release linked above. Our installer is not code-signed.
+   If you choose to continue, use **More info → Run anyway**.
+3. Open **Linger** from the Start menu. Use that same entry to reopen it later.
+4. Continue to [Getting in](#getting-in).
+
+### Linux AppImage (including Omarchy)
+
+An AppImage is the app itself, not an installer. Open a terminal on **your own
+computer**, paste these two lines, and press Enter. This example uses version
+`0.1.0` saved in `Downloads`; substitute your actual filename if it differs.
 
 ```bash
 chmod +x ~/Downloads/linger_0.1.0_amd64.AppImage
 ~/Downloads/linger_0.1.0_amd64.AppImage
 ```
 
-Type the second line in a terminal and press Enter. That file path **is the
-launch command**. Use it again whenever you want to reopen Linger. You can
-also open the executable file from your file manager.
+The first line allows it to run; the second opens the window. **Keep the
+terminal open while using it.** To reopen Linger later, run just the second
+line again, or open the executable file from your file manager. No Docker
+commands are needed on your computer.
 
-If it crashes on Linux with `Could not create GBM EGL display`, try this exact
-command instead (with your downloaded filename):
+**No window?** Use [AppImage troubleshooting](#appimage-troubleshooting) below
+for FUSE or graphics errors. Once the window opens, go to [Getting in](#getting-in).
+
+### Linux packages
+
+Open a terminal on your own computer and run the command for your distribution.
+Replace the example filename with the one you downloaded.
+
+Ubuntu / Debian / Mint:
 
 ```bash
-WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 ~/Downloads/linger_0.1.0_amd64.AppImage
+sudo apt install ~/Downloads/linger_0.1.0_amd64.deb
 ```
 
-That setting applies only to this launch. It worked around a WebKitGTK graphics
-crash on one Omarchy/Wayland computer; it is not needed on every machine.
+Fedora:
 
-**Windows will show you a warning.** It says *"Windows protected your PC"*, and
-the *Run anyway* button is hidden behind the small *More info* link. That is
-Windows saying the installer has not been through a paid signing process. It has
-not. Nothing about the download is broken. Click *More info*, then *Run anyway*.
+```bash
+sudo dnf install ~/Downloads/linger-0.1.0-1.x86_64.rpm
+```
+
+openSUSE:
+
+```bash
+sudo zypper install ~/Downloads/linger-0.1.0-1.x86_64.rpm
+```
+
+Open **Linger** from your application launcher, now and whenever you want to
+reopen it. Then go to [Getting in](#getting-in).
 
 ## Getting in
 
-Open the app. There is one box, and it takes any of these:
+For a **new member**:
 
-- an **invite link** somebody sent you — this is the usual one
-- the **address** of a server you already have an account on, like
-  `linger.example.com`
-- a **setup link**, if you are the person who just started the server
+1. Ask the host for an invite, such as `https://linger.example.com/invite/CODE`.
+2. Paste the **whole invite link** into **server or link** and press **continue**.
+   Do not remove the invite code or anything after `?`.
+3. Choose a username, display name, and password of at least eight characters,
+   then join the server. These are new credentials for this server, not your
+   Windows, Linux or GitHub password.
 
-Paste the **whole link**, including anything after `?`, then pick a username
-and a password (eight characters or more), or sign in if you already have an
-account. A setup link is private and works once; an invite link is for the
-person it was sent to.
+**Already have an account?** Enter the server address, such as
+`https://linger.example.com`, then sign in with that server's existing
+username and password.
+
+**Making the host account?** Paste the entire private `/setup?token=…` link
+from the server log. Follow [host guide step 6](host-guide.md#6-make-your-host-account).
+Setup links work once and belong only to the host; send friends invites instead.
+
+**Seeing a password-mismatch error before you've made an account?** You likely
+entered only the server address. Go back and paste an invite link. There is
+no public sign-up. If the invite has expired or run out of uses, ask the host
+for a new one.
 
 The app remembers you. On most computers your sign-in is kept in the system's
 password store — the same place your browser keeps passwords — so you do not
@@ -81,6 +117,29 @@ everything.
 
 You can stop reading and use the app now. The rest of this guide explains
 features as you need them.
+
+---
+
+## AppImage troubleshooting
+
+**An error mentions FUSE or `libfuse.so.2`:** install `fuse2` only if needed.
+On Omarchy, run `omarchy pkg add fuse2`; on Arch, run
+`sudo pacman -S fuse2`. Then retry the launch command. `fuse3` is not a
+substitute for this library; do not uninstall it. For other distributions,
+see [AppImage's FUSE instructions](https://docs.appimage.org/user-guide/troubleshooting/fuse.html).
+
+**`Could not create GBM EGL display` and the app aborts:** try this exact
+command, with your downloaded filename:
+
+```bash
+WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 ~/Downloads/linger_0.1.0_amd64.AppImage
+```
+
+This opened Linger on the tested Omarchy/Wayland computer. It changes only
+this launch, not your system graphics settings. If it works for you, use
+**this full command every time you reopen the app**. It is not required on
+every Linux computer. If it still fails, keep the terminal error to share
+when asking for help; leave setup tokens and invite links out of screenshots.
 
 ---
 
@@ -286,10 +345,24 @@ you can come back.
 
 ## Updates
 
-The app checks for a new version when it starts and when you open settings. If
-there is one, you get one quiet line in the status bar. Nothing downloads or
-installs until you click it in **settings → updates**. It will never restart
-itself in the middle of a sentence.
+1. Open **settings → this computer → updates**.
+2. Press **check again**. The panel shows your version and whether a newer
+   release is available.
+3. When you are ready to close the app, choose **install and restart** if
+   offered. Nothing downloads or installs until you choose it.
+
+If this copy cannot update itself, or an update fails, download the newer
+installer/AppImage from [Releases](https://github.com/itsMattGuenther/Linger/releases/latest)
+and use the installation steps above. Close the old app first. For an
+AppImage, make the new file executable and launch that file, not the old one.
+Do not delete your account or application data to update.
+
+A code push to GitHub is **not a release**. New downloads appear when a
+desktop release is published. Updating your app also does not update the
+server: the host follows the [server update steps](host-guide.md#updating-the-server).
+
+The in-app updater is implemented, but its full real-machine upgrade check
+is still open ([HC-1](../TASKS.md#hc-1--cut-a-release-and-watch-a-machine-update-itself)).
 
 ## Signing out
 

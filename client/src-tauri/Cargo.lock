@@ -2660,6 +2660,7 @@ dependencies = [
  "futures-util",
  "keyring",
  "linger-core",
+ "notify-rust",
  "opus",
  "rand 0.9.5",
  "rustls",

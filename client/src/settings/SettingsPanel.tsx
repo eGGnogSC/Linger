@@ -23,6 +23,11 @@ import {
   QUIET_FROM_HOUR,
   QUIET_UNTIL_HOUR,
   saveSoundPrefs,
+  SOUND_CATEGORIES,
+  cueAllowed,
+  playSound,
+  type SoundCategory,
+  type SoundCue,
   type SoundPrefs,
 } from "../lib/sound";
 import { THEME_PREFS, type ThemePref } from "../lib/theme";
@@ -267,10 +272,9 @@ export default function SettingsPanel({
  * it. The window is 22:00–08:00 in your own time — a knock from a friend six
  * timezones away is judged by your clock, not theirs.
  *
- * There is one sound today (the knock). Entrance sounds (T-901) will be the
- * second, and these two switches already cover it.
+ * Notification cues share the same player and listener-local policy as knocks.
  */
-function SoundSection() {
+export function SoundSection() {
   const [prefs, setPrefs] = useState<SoundPrefs>(loadSoundPrefs);
 
   const change = (next: SoundPrefs): void => {
@@ -282,8 +286,9 @@ function SoundSection() {
     <section className="settings-section">
       <h3 className="panel-label">sound</h3>
       <p className="settings-lead">
-        Linger makes one noise: a soft knock when somebody knocks at you. Nothing
-        else in the app makes a sound.
+        Choose which chimes you hear. These switches do not silence voice chat;
+        use deafen in your voice session for that. Desktop banner rules are
+        under notifications in the roster.
       </p>
       <button
         type="button"
@@ -291,11 +296,11 @@ function SoundSection() {
         aria-pressed={prefs.muted}
         onClick={() => change({ ...prefs, muted: !prefs.muted })}
       >
-        {prefs.muted ? "muted" : "sound on"}
+        mute all notification sounds
       </button>
       <p className="settings-lead settings-warmth-lead">
         Quiet hours run from {QUIET_FROM_HOUR}:00 to 0{QUIET_UNTIL_HOUR}:00 on
-        this computer's clock. Nothing makes a sound during them.
+        this computer's clock. Notification chimes stay silent during them.
       </p>
       <button
         type="button"
@@ -305,9 +310,31 @@ function SoundSection() {
       >
         {prefs.quietHours ? "quiet hours on" : "quiet hours off"}
       </button>
+      {SOUND_CATEGORIES.map((category) => (
+        <div key={category} className="settings-field">
+          <label>
+            <input type="checkbox" checked={prefs.categories[category]}
+              onChange={(event) => change({ ...prefs, categories: { ...prefs.categories, [category]: event.target.checked } })} />
+            {SOUND_LABELS[category]}
+          </label>{" "}
+          <button type="button" className="settings-mini"
+            aria-label={`preview ${SOUND_LABELS[category]}`}
+            disabled={!cueAllowed(SOUND_PREVIEWS[category], prefs, new Date())}
+            onClick={() => { void playSound(SOUND_PREVIEWS[category]); }}>preview</button>
+        </div>
+      ))}
+      <p className="settings-lead">Previews follow these switches and quiet hours too.</p>
     </section>
   );
 }
+
+const SOUND_LABELS: Record<SoundCategory, string> = {
+  voice: "voice joins, leaves and moves", controls: "mute and deafen controls",
+  dms: "DM messages", rooms: "room messages", knocks: "knocks",
+};
+const SOUND_PREVIEWS: Record<SoundCategory, SoundCue> = {
+  voice: "peer-join", controls: "unmute", dms: "dm", rooms: "room", knocks: "knock",
+};
 
 /**
  * Updates (T-701).

@@ -107,7 +107,7 @@ pub trait Events: Send + Sync + 'static {
     /// A sequenced frame. It has already been parsed here, so the frontend's
     /// `ServerFrame` annotation is true rather than hopeful; unknown ops never
     /// get this far.
-    fn frame(&self, frame: &ServerFrame);
+    fn frame(&self, frame: &ServerFrame, replayed: bool);
 }
 
 /// An access token and when it dies. The frontend computes `expires_at_ms` from
@@ -244,6 +244,8 @@ struct Session {
     id: String,
     /// Highest sequence number handed to the frontend; `None` until `ready`.
     last_seq: Option<u64>,
+    /// Last sequence in the current replay; unknown ops still advance this boundary.
+    replay_through: Option<u64>,
 }
 
 /// How one connection ended.
@@ -515,7 +517,10 @@ fn apply<E: Events>(
                 }
             });
         }
-        Some(ServerEvent::Resumed { .. }) => {
+        Some(ServerEvent::Resumed { replayed }) => {
+            if let Some(open) = session.as_mut() {
+                open.replay_through = open.last_seq.map(|last| last.saturating_add(*replayed));
+            }
             events.status(Status::Ready {
                 latency_ms: since_ms(opened_at),
             });
@@ -537,11 +542,12 @@ fn apply<E: Events>(
         *session = Some(Session {
             id: data.session_id.clone(),
             last_seq: Some(seq),
+            replay_through: None,
         });
         // Payload first, then the announcement: "ready" should mean the
         // frontend already has the roster and rooms, not that they are coming.
         if let Some(frame) = &typed {
-            events.frame(frame);
+            events.frame(frame, false);
         }
         events.status(Status::Ready {
             latency_ms: since_ms(opened_at),
@@ -570,7 +576,10 @@ fn apply<E: Events>(
     }
     open.last_seq = Some(seq);
     if let Some(frame) = &typed {
-        events.frame(frame);
+        events.frame(
+            frame,
+            open.replay_through.is_some_and(|through| seq <= through),
+        );
     }
     Step::Idle
 }

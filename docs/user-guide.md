@@ -190,7 +190,7 @@ next to *SERVER* in the left rail. The panel has four tabs along the top:
 
 - **you** — your display name, how your name looks, your password
 - **reading** — density, theme, evening warmth, normalizing other people's names
-- **sound & voice** — the knock sound and quiet hours; microphone, speakers,
+- **sound & voice** — notification chimes and quiet hours; microphone, speakers,
   push to talk
 - **this computer** — take everything with you, updates, sign out
 
@@ -366,10 +366,20 @@ Also in settings:
 
 ## Being interrupted, or not
 
-The only thing that raises a notification is **somebody naming you** — or a
-person you have specifically asked to hear about. The **notify** button at the
+Desktop banners appear for **somebody naming you** — or a
+person you have specifically asked to hear about. The **notifications** button at the
 top of the roster is where you tick those people, either everywhere or in
 chosen rooms.
+
+For chimes, open **settings → sound & voice**. Voice-session joins, leaves and
+moves, mute/deafen changes, DMs and knocks have sounds by default. Ordinary
+room-message sounds start off. Turn each category on or off, preview its
+sound, or use **mute all notification sounds**. Quiet hours silence chimes
+between 22:00 and 08:00 on your computer's clock by default.
+
+Messages you are already reading, your own messages, reconnect replay and
+push-to-talk presses do not chime. These switches do not silence voice chat;
+use **deafen** for that. Muting chimes keeps visual notifications visible.
 
 There are **no unread badges and no counters** anywhere in Linger. That is
 deliberate. Nothing is keeping score of what you have not read, so nothing can

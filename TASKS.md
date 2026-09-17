@@ -265,8 +265,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   validation; no release checks were closed. T-925 records the separate icon
   report without adding it to this implementation.
 
-- ⬜ **T-925 · Use the selected app icon on every desktop surface** — effort:
-  **medium**. The running Windows app was reported without the chosen icon;
+- ⏳ **T-925 · Use the selected app icon on every desktop surface** — effort:
+  **medium** — Matt, 2026-09-17. The running Windows app was reported without the chosen icon;
   the affected surface and cause have not been reproduced yet. Audit the
   existing porch artwork through bundle configuration, packaged assets and
   installed behavior. Check the app window, taskbar/dock, launcher/Start menu

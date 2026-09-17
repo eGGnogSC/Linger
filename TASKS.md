@@ -293,7 +293,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   production build and the full local gate pass. CI and installed Windows/
   Omarchy validation remain; the original desktop's refusal is not diagnosed.
 
-- ⬜ **T-927 · Clear temporary knock feedback** — effort: **medium**.
+- ⏳ **T-927 · Clear temporary knock feedback** — effort: **medium** —
+  Matt, 2026-09-17.
   Reproduce the persistent sender-side `knocked` label separately from the
   recipient card. Restore the action after brief feedback without weakening
   server rate limits or retaining knock history. Cover timeout, failures and

@@ -37,7 +37,8 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("../notify/notify", () => ({ considerFrame: () => undefined }));
-vi.mock("./sound", () => ({ playKnock: () => false }));
+const played: string[] = [];
+vi.mock("./sound", () => ({ playKnock: () => false, playSound: (cue: string) => { played.push(cue); return true; } }));
 
 const {
   connect,
@@ -46,6 +47,7 @@ const {
   leaveVoice,
   serverState,
   setVoiceMuted,
+  setVoiceDeafened,
   setVoiceVolume,
   voicePeersIn,
 } = await import("./gateway");
@@ -135,6 +137,7 @@ describe("voice in the store", () => {
     await Promise.all([disconnect(HOME), disconnect(WORK)]);
     invoked.length = 0;
     failing.clear();
+    played.length = 0;
   });
 
   it("remembers the session id from ready, and who is in voice per room", async () => {
@@ -164,8 +167,8 @@ describe("voice in the store", () => {
     await joinVoice(fakeApi(HOME), "r-garage", { input: "USB Mic", output: null }, true);
 
     const calls = invoked.filter((call) => call.cmd.startsWith("voice_"));
-    expect(calls.map((call) => call.cmd)).toEqual(["voice_mute", "voice_join"]);
-    expect(calls[0]?.args).toEqual({ baseUrl: HOME, muted: true });
+    expect(calls.map((call) => call.cmd)).toEqual(["voice_controls", "voice_join"]);
+    expect(calls[0]?.args).toEqual({ baseUrl: HOME, controls: { muted: true, deafened: false } });
     expect(calls[1]?.args).toEqual({
       baseUrl: HOME,
       sessionId: "s-me",
@@ -227,7 +230,7 @@ describe("voice in the store", () => {
     const calls = invoked.filter((call) => call.cmd.startsWith("voice_"));
     expect(calls.map((call) => [call.cmd, call.args.baseUrl])).toEqual([
       ["voice_leave", HOME],
-      ["voice_mute", WORK],
+      ["voice_controls", WORK],
       ["voice_join", WORK],
     ]);
     expect(serverState(HOME).myVoice).toBeNull();
@@ -282,18 +285,111 @@ describe("voice in the store", () => {
     expect(serverState(HOME).myVoice).toBeNull();
   });
 
-  it("mute and volume are remembered and sent, and never leave this machine", async () => {
+  it("mute and volume are remembered and sent through the native engine", async () => {
     await seated(HOME);
     invoked.length = 0;
 
-    setVoiceMuted(HOME, true);
+    await setVoiceMuted(HOME, true);
     setVoiceVolume(HOME, "s-1", 1.5);
 
     expect(serverState(HOME).myVoice).toMatchObject({ muted: true, volumes: { "s-1": 1.5 } });
     const calls = invoked.filter((call) => call.cmd.startsWith("voice_"));
-    expect(calls.map((call) => call.cmd)).toEqual(["voice_mute", "voice_volume"]);
-    // Nothing went to the gateway: mute and volume are not wire frames.
+    expect(calls.map((call) => call.cmd)).toEqual(["voice_controls", "voice_volume"]);
+    // Native code applies the audio gates before reporting controls to the server.
     expect(invoked.some((call) => call.cmd === "gateway_send")).toBe(false);
+  });
+
+  it.each([false, true])("deafen restores prior mute=%s and preserves volume", async (muted) => {
+    await seated(HOME);
+    await setVoiceMuted(HOME, muted);
+    setVoiceVolume(HOME, "friend", 0.4);
+    await setVoiceDeafened(HOME, true);
+    expect(serverState(HOME).myVoice).toMatchObject({ muted: true, deafened: true });
+    await setVoiceMuted(HOME, false);
+    expect(serverState(HOME).myVoice?.muted).toBe(true);
+    await setVoiceDeafened(HOME, false);
+    expect(serverState(HOME).myVoice).toMatchObject({ muted, deafened: false, volumes: { friend: 0.4 } });
+  });
+
+  it("push-to-talk stays muted after undeafen, even if its key was held", async () => {
+    await connect(fakeApi(HOME));
+    arrive(HOME, ready());
+    await joinVoice(fakeApi(HOME), "r-garage", DEFAULTS, true);
+    await setVoiceMuted(HOME, false);
+    await setVoiceDeafened(HOME, true);
+    await setVoiceMuted(HOME, false);
+    await setVoiceDeafened(HOME, false);
+    expect(serverState(HOME).myVoice?.muted).toBe(true);
+    await setVoiceMuted(HOME, false);
+    expect(serverState(HOME).myVoice?.muted).toBe(false);
+  });
+
+  it("serializes rapid controls and leaves after a failed native control", async () => {
+    await seated(HOME);
+    await Promise.all([setVoiceDeafened(HOME, true), setVoiceMuted(HOME, false), setVoiceDeafened(HOME, false)]);
+    expect(serverState(HOME).myVoice).toMatchObject({ muted: false, deafened: false });
+    failing.add("voice_controls");
+    await expect(setVoiceDeafened(HOME, true)).rejects.toThrow(/disconnected/);
+    expect(serverState(HOME).myVoice).toBeNull();
+    expect(invoked.at(-1)?.cmd).toBe("voice_leave");
+  });
+
+  it("keeps deafen when moving, but starts fresh after leaving", async () => {
+    await seated(HOME);
+    await setVoiceDeafened(HOME, true);
+    await joinVoice(fakeApi(HOME), "r-porch", DEFAULTS, false);
+    expect(serverState(HOME).myVoice).toMatchObject({ roomId: "r-porch", muted: true, deafened: true });
+    await leaveVoice(HOME);
+    await joinVoice(fakeApi(HOME), "r-porch", DEFAULTS, false);
+    expect(serverState(HOME).myVoice).toMatchObject({ muted: false, deafened: false });
+  });
+
+  it("plays live voice arrivals and departures, not controls or replay", async () => {
+    await seated(HOME);
+    expect(played).toEqual([]);
+    const together = voiceState("r-garage", [["s-me", "u-matt"], ["s-1", "friend"]]);
+    arrive(HOME, together);
+    expect(played).toEqual(["voice-join"]);
+    arrive(HOME, together);
+    expect(played).toHaveLength(1);
+    arrive(HOME, voiceState("r-garage", [["s-me", "u-matt"]]));
+    expect(played.at(-1)).toBe("peer-leave");
+    handlers.get("gateway:frame")?.({ payload: { server: HOME, frame: together, replayed: true } });
+    expect(played).toHaveLength(2);
+    arrive(HOME, voiceState("r-garage", [["s-me", "u-matt"], ["s-1", "friend"], ["s-2", "other"]]));
+    expect(played.at(-1)).toBe("peer-join");
+  });
+
+  it("push-to-talk is silent; deliberate controls chime only after success", async () => {
+    await connect(fakeApi(HOME));
+    arrive(HOME, ready());
+    await joinVoice(fakeApi(HOME), "r-garage", DEFAULTS, true);
+    await setVoiceMuted(HOME, false);
+    await setVoiceMuted(HOME, true);
+    expect(played).toEqual([]);
+    await setVoiceDeafened(HOME, true);
+    await setVoiceDeafened(HOME, false);
+    expect(played).toEqual(["deafen", "undeafen"]);
+    failing.add("voice_controls");
+    await expect(setVoiceDeafened(HOME, true)).rejects.toThrow();
+    expect(played).toHaveLength(2);
+  });
+
+  it("moving has one arrival cue and observers outside voice never ring", async () => {
+    await connect(fakeApi(HOME));
+    arrive(HOME, ready());
+    arrive(HOME, voiceState("r-garage", [["s-1", "friend"]]));
+    expect(played).toEqual([]);
+    await joinVoice(fakeApi(HOME), "r-garage", DEFAULTS, false);
+    arrive(HOME, voiceState("r-garage", [["s-me", "u-matt"]]));
+    played.length = 0;
+    await joinVoice(fakeApi(HOME), "r-porch", DEFAULTS, false);
+    expect(played).toEqual([]);
+    arrive(HOME, voiceState("r-porch", [["s-me", "u-matt"], ["s-1", "friend"]]));
+    expect(played).toEqual(["voice-move"]);
+    await setVoiceMuted(HOME, true);
+    await setVoiceMuted(HOME, false);
+    expect(played.slice(-2)).toEqual(["mute", "unmute"]);
   });
 
   it("a fresh ready is a fresh session, so the seat and the lists go with it", async () => {

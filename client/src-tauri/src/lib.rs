@@ -3,6 +3,7 @@
 //! has no others.
 
 pub mod gateway;
+mod notifications;
 mod secrets;
 mod updates;
 pub mod voice;
@@ -111,6 +112,7 @@ struct StatusEvent<'a> {
 struct FrameEvent<'a> {
     server: &'a str,
     frame: &'a ServerFrame,
+    replayed: bool,
 }
 
 /// Sends what one server's gateway client produces to the WebView.
@@ -246,12 +248,13 @@ impl gateway::Events for WindowEvents {
         );
     }
 
-    fn frame(&self, frame: &ServerFrame) {
+    fn frame(&self, frame: &ServerFrame, replayed: bool) {
         let _ = self.app.emit(
             gateway::FRAME_EVENT,
             FrameEvent {
                 server: &self.server,
                 frame,
+                replayed,
             },
         );
     }
@@ -399,8 +402,12 @@ async fn voice_join(
 /// Stop or resume sending the microphone. Yours alone (SPEC §4.14); the
 /// surface's mute button and its push-to-talk key both land here.
 #[tauri::command]
-async fn voice_mute(app: AppHandle, base_url: String, muted: bool) {
-    engine_for(&app, &base_url).set_muted(muted);
+async fn voice_controls(
+    app: AppHandle,
+    base_url: String,
+    controls: linger_core::gateway::VoiceControls,
+) {
+    engine_for(&app, &base_url).set_controls(controls).await;
 }
 
 /// How loud one peer plays for you, 1.0 being as sent.
@@ -478,9 +485,10 @@ pub fn run() {
             voice_join,
             voice_leave,
             voice_frame,
-            voice_mute,
+            voice_controls,
             voice_volume,
             voice_devices,
+            notifications::show_notification,
             updates::app_version,
             updates::update_check,
             updates::update_install

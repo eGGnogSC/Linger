@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { inQuietHours, type SoundPrefs, soundAllowed } from "./sound";
+import { DEFAULT_SOUND_PREFS, inQuietHours, type SoundPrefs, soundAllowed } from "./sound";
 
 /** A local-time moment, built from the parts the functions actually read. */
 function at(hour: number, minute = 30): Date {
   return new Date(2026, 7, 29, hour, minute, 0);
 }
 
-const LOUD: SoundPrefs = { muted: false, quietHours: false };
-const DEFAULTS: SoundPrefs = { muted: false, quietHours: true };
+const LOUD: SoundPrefs = { ...DEFAULT_SOUND_PREFS, quietHours: false };
+const DEFAULTS = DEFAULT_SOUND_PREFS;
 
 describe("inQuietHours", () => {
   it("covers 22:00 through to 08:00, across midnight", () => {
@@ -47,7 +47,7 @@ describe("soundAllowed", () => {
   });
 
   it("mute wins over everything, at any hour", () => {
-    expect(soundAllowed({ muted: true, quietHours: false }, at(14))).toBe(false);
-    expect(soundAllowed({ muted: true, quietHours: true }, at(3))).toBe(false);
+    expect(soundAllowed({ ...DEFAULTS, muted: true, quietHours: false }, at(14))).toBe(false);
+    expect(soundAllowed({ ...DEFAULTS, muted: true, quietHours: true }, at(3))).toBe(false);
   });
 });

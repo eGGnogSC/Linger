@@ -276,7 +276,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   or app identity from stale OS icon caches. Check macOS when a distributable
   build is available; do not claim a platform passed from source inspection.
 
-  **Fix ready; installed-surface acceptance open, 2026-09-17 (PR #77).**
+  **PR #77 merged 2026-09-17; installed-surface acceptance open.**
   Published v0.1.0 predates the porch artwork;
   its AppImage and Windows application still contain the old icons. Explicit
   NSIS installer/uninstaller icons were also missing, and the Linux window
@@ -373,6 +373,30 @@ flows and do not start a new milestone. Evidence and rationale are in the
   paste, hardware graphics and a signed update remain unclaimed. No system
   packages or global desktop settings were changed; no release was published.
 
+- ✅ **T-930 · Quiet, controllable notification chimes** — effort: **high** —
+  Matt, 2026-09-17. Extend the existing sound player. Voice-session joins,
+  leaves and moves, mic/deafen controls and DMs default on; ordinary room
+  messages default off. Join/leave refers to the listener's voice session,
+  not entering text rooms. Add category switches and one master silence
+  control; preserve quiet hours. No sound on replay/history, duplicate frames,
+  own messages or messages already being read. Never chime on PTT edges.
+  *Accept:* test routing, gating, persistence, reconnect suppression and
+  accessible settings; audition remains a real-listener check. This does not
+  implement personal entrance sounds (T-901…T-903) or redesign the Console UI.
+
+  **Implemented 2026-09-17.** One synthesized sound player owns all chimes;
+  desktop banners explicitly request silence. Categories preserve existing
+  master/quiet-hour preferences and remain effective if storage refuses a
+  write. Voice membership cues are limited to the listener's session, control
+  cues wait for a successful change, and PTT stays quiet. Native gateway replay
+  metadata suppresses reconnect chimes without changing the wire protocol or
+  existing mention-banner batching. **PR #76 merged 2026-09-17:** all CI
+  checks pass, including 88 Chromium/WebKit cases. A temporary combined tree
+  with T-1407, T-925 and T-929 also passes the full local gate, all 438 client
+  tests, 44 Chromium cases and production build. Real Linux/
+  Windows listening, sound-device behavior and banner silence still need an
+  installed-client check; these are not HC-8/HC-9 evidence.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request
@@ -395,6 +419,12 @@ flows and do not start a new milestone. Evidence and rationale are in the
 - ⬜ **T-909 · Make Console controls readable and reachable** — effort: **medium**
   Review remaining muted/faint interactive text, focus states, empty/error
   states and the minimum desktop window. Use the existing tokens and layout.
+  **Member-menu follow-up, 2026-09-17:** the first click on a member should
+  present the same ordinary actions for hosts and members. Group removal and
+  other host-only operations behind an explicit admin-actions area, with
+  confirmation for removal. Keep administration discoverable without exposing
+  destructive actions in the initial popover. No new roles or permission
+  matrix; implement with the deferred Console UI/UX review, not this batch.
   *Accept:* current screenshots in both themes at 1100×720 and 760×480; all
   three densities checked; keyboard-only use, larger text and reduced motion
   checked; a friend finds settings, sends a file and joins voice unaided.
@@ -1198,6 +1228,31 @@ them, and cmake installs fine in user space.
   local gate also passed on the subsequent onboarding branches containing
   this fix, using a temporary toolchain. HC-8 and HC-9 remain open; merging
   the startup fix does not close the real-network voice checks.
+
+- ✅ **T-1407 · Shared mute state and deafen** — effort: **high** — Matt,
+  2026-09-17. Show each voice session's self-reported mute/deafen state.
+  Deafen silences incoming voice and mutes the microphone together; undeafen
+  restores the previous mic choice (push-to-talk stays closed until pressed).
+  Nobody can change another person's controls. Keep room/DM membership
+  filtering and old-client compatibility; unknown legacy state is not “live”.
+  *Accept:* real gateway tests cover isolation, resume and legacy joins;
+  native audio tests cover both directions, queued playback and restoration;
+  client tests cover controls and visible states. Record real-device checks
+  separately; do not close HC-8/HC-9 from local automation.
+
+  **2026-09-17 implementation:** additive controls on `voice.join` and
+  `voice.state`; old clients remain usable and their state is shown as unknown.
+  The native encoder and speaker gate enforce deafen before reporting it;
+  queued and newly arriving audio is discarded without losing peer volumes.
+  Undeafen restores the prior mic choice, with push-to-talk closed until a new
+  press. Controls survive moves and disappear on leave. Gateway tests cover
+  same-person session isolation, normalization, legacy joins, DM privacy and
+  replay across a forced disconnect. Native tests cover tone/silence, playback
+  queues and restoration; browser tests exercise the real controls. The full
+  local gate, 425 client tests, 42 Chromium cases, typecheck and production
+  build pass. **PR #75 merged 2026-09-17:** all CI checks pass, including
+  84 Chromium/WebKit browser cases and the server image build. Installed Linux/
+  Windows listening and the existing real-network checks remain open.
 
 ### M13 — ambient voice
 

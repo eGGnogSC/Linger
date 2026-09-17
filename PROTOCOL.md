@@ -709,7 +709,7 @@ Beyond that, the client must re-identify and refetch.
 | `presence.update` | `{ state, away_message? }` | Where you are, and nothing about what you are doing (SPEC §4.3). |
 | `room.focus` | `{ room_id \| null }` | fires on focus; `null` = left the room |
 | `typing.start` | `{ room_id }` | server rate-limits to 1 per 4s per room |
-| `voice.join` | `{ room_id }` | join voice in that room; leaves the one you were in |
+| `voice.join` | `{ room_id, controls?: { muted, deafened } }` | join or update your own controls; moving leaves the old room |
 | `voice.leave` | `{}` | no room id: you are in at most one |
 | `voice.signal` | `{ to, kind, payload }` | pass one WebRTC message to one peer |
 
@@ -730,7 +730,7 @@ Beyond that, the client must re-identify and refetch.
 | `room.create` / `room.update` | `Room` — a DM's `room.create` reaches its members and nobody else, which is how the other members find out it exists |
 | `typing` | `{ room_id, user_id }` |
 | `knock` | `{ from_user_id }` — **sent to that one person's sessions and nobody else's** (SPEC §4.9) |
-| `voice.state` | `{ room_id, peers: [{ session_id, user_id }] }` — who is in voice in that room, whole every time |
+| `voice.state` | `{ room_id, peers: [{ session_id, user_id, controls? }] }` — who is in voice in that room, whole every time |
 | `voice.signal` | `{ from, kind, payload }` — one peer's WebRTC message, **addressed to one session** |
 
 ```ts
@@ -750,7 +750,8 @@ and it crosses this server as an opaque string that nothing here parses, validat
 stores. It is a post office, not a participant.
 
 ```ts
-type VoicePeer   = { session_id: string; user_id: string }
+type VoiceControls = { muted: boolean; deafened: boolean }
+type VoicePeer   = { session_id: string; user_id: string; controls?: VoiceControls | null }
 type VoiceSignal = "offer" | "answer" | "candidate"
 ```
 
@@ -759,8 +760,22 @@ one person signed in on a laptop and a desktop is two of them. Session ids survi
 resume and change on a fresh `identify`, which is exactly the identity a WebRTC session
 has.
 
+**Controls are self-reported, not remote commands.** Repeating `voice.join`
+for your current room with `controls` changes only your own session's state;
+it does not leave/rejoin or rebuild peer connections. The server normalizes
+`deafened: true` to `muted: true`. Unchanged reports produce no frame. Missing
+controls on a legacy join mean unknown, not an open microphone; repeating a
+legacy join does not erase known state. Reports are held in memory, survive
+resume with the seat, and disappear on leaving. They use the ordinary
+membership-filtered `voice.state`, including inside DMs.
+
+This is an additive v1 extension: old servers ignore the extra join field and
+old clients ignore the extra peer field. New clients still enforce local
+controls on an old server, but cannot show others' state. Mic activity and
+output-device health are not inferred from these two booleans.
+
 **`voice.state` is the whole list every time**, never a delta. It is sent to a room's
-members whenever anybody joins or leaves, and a client can act on the newest one it has
+members whenever anybody joins, leaves or changes controls, and a client can act on the newest one it has
 without replaying what came before. Getting it twice is harmless; missing one is not,
 which is why it is a snapshot.
 

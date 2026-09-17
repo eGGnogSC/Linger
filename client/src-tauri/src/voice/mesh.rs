@@ -86,6 +86,7 @@ mod tests {
             .map(|id| VoicePeer {
                 session_id: (*id).to_string(),
                 user_id: UserId::new(),
+                controls: None,
             })
             .collect()
     }

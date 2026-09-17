@@ -54,7 +54,12 @@ pub enum ClientFrame {
     /// Turn your microphone on in a room you are already in (SPEC §4.14).
     /// Joining voice somewhere else leaves wherever you were.
     #[serde(rename = "voice.join")]
-    VoiceJoin { room_id: RoomId },
+    VoiceJoin {
+        room_id: RoomId,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        controls: Option<VoiceControls>,
+    },
     /// No room id: you are in voice in at most one room, so there is only one
     /// thing this could mean.
     #[serde(rename = "voice.leave")]
@@ -97,6 +102,29 @@ pub enum VoiceSignalKind {
 pub struct VoicePeer {
     pub session_id: String,
     pub user_id: UserId,
+    /// Absent on legacy clients/servers: unknown, never evidence of a live mic.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub controls: Option<VoiceControls>,
+}
+
+/// Self-reported voice controls, visible only to the room's members.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct VoiceControls {
+    pub muted: bool,
+    pub deafened: bool,
+}
+
+impl VoiceControls {
+    /// Deafen must never advertise an open microphone, even from a bad client.
+    #[must_use]
+    pub fn normalized(self) -> Self {
+        Self {
+            muted: self.muted || self.deafened,
+            ..self
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +289,39 @@ impl ServerFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_voice_controls_are_unknown_and_new_fields_are_additive() {
+        let room_id = RoomId::new();
+        let legacy = serde_json::json!({"op":"voice.join", "d":{"room_id":room_id}});
+        assert!(matches!(
+            serde_json::from_value::<ClientFrame>(legacy).unwrap(),
+            ClientFrame::VoiceJoin { controls: None, .. }
+        ));
+        let peer: VoicePeer = serde_json::from_value(
+            serde_json::json!({"session_id":"old", "user_id":UserId::new()}),
+        )
+        .unwrap();
+        assert_eq!(peer.controls, None);
+        assert!(serde_json::to_value(peer)
+            .unwrap()
+            .get("controls")
+            .is_none());
+        #[derive(Deserialize)]
+        struct LegacyJoin {
+            room_id: RoomId,
+        }
+        let modern = ClientFrame::VoiceJoin {
+            room_id,
+            controls: Some(VoiceControls {
+                muted: true,
+                deafened: true,
+            }),
+        };
+        let wire = serde_json::to_value(modern).unwrap();
+        let decoded: LegacyJoin = serde_json::from_value(wire["d"].clone()).unwrap();
+        assert_eq!(decoded.room_id, room_id);
+    }
 
     #[test]
     fn client_heartbeat_matches_protocol() {

@@ -197,7 +197,7 @@ next to *SERVER* in the left rail. The panel has four tabs along the top:
 
 - **you** — your display name, how your name looks, your password
 - **reading** — density, theme, evening warmth, normalizing other people's names
-- **sound & voice** — the knock sound and quiet hours; microphone, speakers,
+- **sound & voice** — notification chimes and quiet hours; microphone, speakers,
   push to talk
 - **this computer** — take everything with you, updates, sign out
 
@@ -260,9 +260,19 @@ While you are in:
 
 - **mute** stops sending, instantly, and nobody else can change it. Nobody can
   mute you either, and nobody can turn your microphone on.
+- **deafen** silences incoming voice and mutes your microphone together.
+  **undeafen** restores your previous mic choice; with push-to-talk, press
+  `ctrl` again to speak. Deafen does not change notification sounds.
+- Names show **muted** or **deafened** when that person shares their state.
+  **mic state unknown** means their client or the server needs an update.
+  An unmuted microphone is not a guarantee somebody is listening.
 - The small slider beside each name is **how loud they are for you**. It never
   leaves your computer.
 - **leave voice** turns the microphone off. Closing the app does too.
+
+Moving voice to another room keeps your mute/deafen choices. Leaving and
+joining starts a fresh session. Your per-person volume settings are unaffected
+by deafen, and missed speech is discarded rather than played when you return.
 
 **Push to talk** is in settings → voice. With it on, every call starts muted and
 the microphone is open only while you hold `ctrl`. It is off by default because
@@ -363,10 +373,20 @@ Also in settings:
 
 ## Being interrupted, or not
 
-The only thing that raises a notification is **somebody naming you** — or a
-person you have specifically asked to hear about. The **notify** button at the
+Desktop banners appear for **somebody naming you** — or a
+person you have specifically asked to hear about. The **notifications** button at the
 top of the roster is where you tick those people, either everywhere or in
 chosen rooms.
+
+For chimes, open **settings → sound & voice**. Voice-session joins, leaves and
+moves, mute/deafen changes, DMs and knocks have sounds by default. Ordinary
+room-message sounds start off. Turn each category on or off, preview its
+sound, or use **mute all notification sounds**. Quiet hours silence chimes
+between 22:00 and 08:00 on your computer's clock by default.
+
+Messages you are already reading, your own messages, reconnect replay and
+push-to-talk presses do not chime. These switches do not silence voice chat;
+use **deafen** for that. Muting chimes keeps visual notifications visible.
 
 There are **no unread badges and no counters** anywhere in Linger. That is
 deliberate. Nothing is keeping score of what you have not read, so nothing can

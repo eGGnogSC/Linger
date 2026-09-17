@@ -48,7 +48,7 @@ vi.mock("../notify/notify", () => ({ considerFrame: () => undefined }));
 // The sound player reaches for an `AudioContext` that a test runner does not
 // have. Whether a knock makes a noise is `sound.test.ts`'s question; this file
 // is about where the card ends up.
-vi.mock("./sound", () => ({ playKnock: () => false }));
+vi.mock("./sound", () => ({ playKnock: () => false, playSound: () => false }));
 
 const {
   anyNewActivity,

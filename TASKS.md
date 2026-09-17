@@ -209,13 +209,22 @@ Measure T-910 before describing a release as lightweight. These close existing
 flows and do not start a new milestone. Evidence and rationale are in the
 [release readiness review](docs/release-readiness.md).
 
-- ⏳ **T-922 · Make first-time VPS hosting a complete path** — effort:
+- ✅ **T-922 · Make first-time VPS hosting a complete path** — effort:
   **medium** — Matt, 2026-09-17. Make Docker installation a numbered action,
   show SSH-key copying without assuming macOS, explain provider firewall
   rules and dynamic home IPs, and group all Compose edits in one visit.
   *Accept:* a fresh Ubuntu 24.04 VPS path has copyable commands, explicit
   local/server context and verification stops; setup, invites and relay
   instructions remain accurate. Keep private field notes out of the commit.
+
+  **Completed 2026-09-17** (PR #67, awaiting merge after #66). Docker install
+  and checks are step 1; the linked VPS guide covers public-key copying,
+  key-only SSH with a changing IP, and provider firewall rules. Domain,
+  storage and optional realm edits are grouped before the Caddyfile edit.
+  Local docs checks (rules, versions, links and Bash syntax) and docs-only CI
+  passed. Package/provider guidance was checked against primary sources.
+  No VPS was created or changed; the next fresh-host walkthrough remains
+  human validation. No release checks were closed.
 
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**

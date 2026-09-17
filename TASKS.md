@@ -311,7 +311,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   unchanged. CI passes, including all 74 Chromium/WebKit cases. The two-machine
   HC-6 check remains open; no release check was closed.
 
-- ⏳ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high** —
+- ✅ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high** —
   Matt, 2026-09-17.
   Reproduce Voxtype output through the actual Linux input path, compare plain
   text input and clipboard insertion, and fix the responsible layer. Do not
@@ -319,7 +319,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   desktop settings. Record an evidence-based limitation if the cause is an
   external component rather than claiming a speculative composer fix.
 
-  **Finding 2026-09-17:** the AppImage hook forces X11. The native comparison
+  **Completed diagnosis/workaround 2026-09-17** (PR #72, awaiting merge after
+  #71). The AppImage hook forces X11. The native comparison
   reproduces corrupted wtype input under XWayland in GTK, plain WebKit and
   Linger's real composer, but not native Wayland. Clipboard/native paste
   succeeds on both display paths; slowing typing does not fix XWayland.
@@ -332,8 +333,11 @@ flows and do not start a new milestone. Evidence and rationale are in the
   All 18 native comparison results are recorded; all Wayland and clipboard
   controls match, and all six XWayland typing cases reproduce corruption.
   The full local gate, 420 client tests, 38 Chromium cases, typecheck,
-  production build, rules, version, shell syntax and doc checks pass. CI is
-  pending.
+  production build, rules, version, shell syntax and doc checks pass. CI also
+  passes, including all 76 Chromium/WebKit cases. Disposable build tools,
+  caches and isolated-desktop files were removed; no system packages were
+  installed and the private onboarding notes remain untracked. No release
+  check was closed.
 
 - ⬜ **T-929 · Evaluate native Wayland for packaged Linux input** — effort:
   **high**. T-928 isolates wtype corruption to XWayland; the current AppImage

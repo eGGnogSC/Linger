@@ -226,13 +226,22 @@ flows and do not start a new milestone. Evidence and rationale are in the
   No VPS was created or changed; the next fresh-host walkthrough remains
   human validation. No release checks were closed.
 
-- ⏳ **T-923 · Make installing and joining unambiguous** — effort: **medium** —
+- ✅ **T-923 · Make installing and joining unambiguous** — effort: **medium** —
   Matt, 2026-09-17. Give each desktop download a clear install/launch path,
   distinguish invite registration from sign-in and host setup, and explain
   updates without promising an unverified end-to-end upgrade.
   *Accept:* package choices match published assets, commands and labels match
   the app, Linux reopening/troubleshooting is copyable, and a new member is
   told to obtain an invite before trying a username and password.
+
+  **Completed 2026-09-17** (PR #68, awaiting merge after #67). Download and
+  launch paths now match the published x64 assets. Invite registration,
+  existing-account sign-in and private host setup are separate instructions;
+  updates name the actual settings tab and buttons, with a manual fallback.
+  Rules, versions, local links, Bash syntax and docs-only CI passed. Omarchy
+  package guidance uses the existing command and the graphics workaround is
+  per launch. No new installation or real-machine upgrade was performed;
+  HC-1 and all other open release checks remain open.
 
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**

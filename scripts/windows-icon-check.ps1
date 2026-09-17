@@ -62,9 +62,13 @@ try {
         if ($app.MainWindowHandle -ne [IntPtr]::Zero) { break }
     }
     if ($app.MainWindowHandle -eq [IntPtr]::Zero) { throw 'Installed app did not open a window' }
-    $icon = [LingerIconProbe]::SendMessage($app.MainWindowHandle, 0x7F, [IntPtr]1, [IntPtr]::Zero)
-    if ($icon -eq [IntPtr]::Zero) { $icon = [LingerIconProbe]::GetClassLongPtr($app.MainWindowHandle, -14) }
-    if ($icon -eq [IntPtr]::Zero) { throw 'Running app has no window/taskbar icon' }
+    # Tao's window icon uses ICON_SMALL; ICON_BIG is a separate taskbar override
+    # and may be unset. Its absence does not mean the window has no icon.
+    $icon = [LingerIconProbe]::SendMessage($app.MainWindowHandle, 0x7F, [IntPtr]::Zero, [IntPtr]::Zero)
+    if ($icon -eq [IntPtr]::Zero) { $icon = [LingerIconProbe]::GetClassLongPtr($app.MainWindowHandle, -34) }
+    if ($icon -eq [IntPtr]::Zero) { throw 'Running app has no caption icon' }
+    $taskbarIcon = [LingerIconProbe]::SendMessage($app.MainWindowHandle, 0x7F, [IntPtr]1, [IntPtr]::Zero)
+    Write-Output "Separate taskbar icon override present: $($taskbarIcon -ne [IntPtr]::Zero)"
     $bitmap = [System.Drawing.Icon]::FromHandle($icon).ToBitmap()
     $bitmap.Save((Join-Path $Output 'running-window-icon.png'))
     $bitmap.Dispose()

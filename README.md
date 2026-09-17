@@ -275,6 +275,11 @@ To regenerate the PNG, Windows ICO and macOS ICNS files after changing that
 source, run `python3 scripts/app-icons.py` from the repository root after
 `pnpm install` in `client`. It uses the pinned Tauri CLI and adds transparent
 padding to make the source square, without cropping or stretching the artwork.
+Use `python3 scripts/app-icons.py --check` to verify the committed files without
+changing them. The [desktop icon audit](docs/app-icon-checks.md) explains the
+package checks and remaining visual checks. Packaging changes run an unsigned
+Linux/Windows test build; these artifacts do not ship an update. Published
+v0.1.0 predates the porch artwork, so it still has the previous icon.
 
 ```bash
 # Debian/Ubuntu

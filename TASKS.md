@@ -276,6 +276,14 @@ flows and do not start a new milestone. Evidence and rationale are in the
   or app identity from stale OS icon caches. Check macOS when a distributable
   build is available; do not claim a platform passed from source inspection.
 
+  **Audit in progress 2026-09-17.** Published v0.1.0 predates the porch artwork;
+  its AppImage and Windows application still contain the old icons. Explicit
+  NSIS installer/uninstaller icons were also missing, and the Linux window
+  selected only the 32-pixel PNG. The configuration now uses the porch ICO for
+  both installer surfaces and a 256-pixel Linux window icon. Source regeneration,
+  package-resource and native-window checks are being recorded in
+  [app-icon-checks.md](docs/app-icon-checks.md); no release has been published.
+
 - ✅ **T-926 · Make file downloads clear and report failures** — effort:
   **medium** — Matt, 2026-09-17. Reproduce the silent browser-handoff failure
   behind attachment saving. Make the action explicit, show a useful failure

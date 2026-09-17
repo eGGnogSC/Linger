@@ -145,14 +145,14 @@ open it again the same way you installed it.
 
 ## 7. Invite people
 
-In the left rail, next to the word *SERVER*, you have two small controls nobody
-else sees: **manage** and **+ room**. Press **manage**, then **invites → make a
-link**. You choose how many people it is good for and when it expires; the link
+In the left rail, press **manage** beside *SERVER*, then **invites → make a
+link**. Only the host sees **manage**. You choose how many people the invite
+is good for and when it expires; the link
 is copied for you the moment it is made. Send it however you normally talk to
 your friends.
 
-Before that, make a room: the empty screen offers **make the first room**, and
-so does **+ room**. A room needs a short name for after the `#` and, if you
+Before that, make a room: use **make the first room** on the empty screen, or
+**+ room** beside *ROOMS* in the left rail. A room needs a short name for after the `#` and, if you
 like, a topic.
 
 An invite link is the only way to get an account. There is no public sign-up.

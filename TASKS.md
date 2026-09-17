@@ -347,8 +347,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   installed and the private onboarding notes remain untracked. No release
   check was closed.
 
-- ⬜ **T-929 · Evaluate native Wayland for packaged Linux input** — effort:
-  **high**. T-928 isolates wtype corruption to XWayland; the current AppImage
+- ⏳ **T-929 · Evaluate native Wayland for packaged Linux input** — effort:
+  **high** — Matt, 2026-09-17. T-928 isolates wtype corruption to XWayland; the current AppImage
   startup hook forces X11 as a graphics compatibility fallback. Evaluate a
   supported per-launch native Wayland option before changing that default.
   *Accept:* test actual packaged startup, typing, paste, graphics and updates

@@ -59,6 +59,10 @@ An empty shortcut icon path uses the target application's first icon, as
 specified by [NSIS](https://nsis.sourceforge.io/Docs/Chapter4.html#createshortcut).
 The check accepts WScript's `,0` representation of that default, but still
 rejects a different icon source.
+The running-window probe reads `ICON_SMALL`, which Tao's window-icon setter
+uses. `ICON_BIG` is a separate taskbar override and may be absent; its absence
+does not establish a missing caption icon. The saved image proves the caption
+artwork, not Windows' final taskbar rendering or cache behavior.
 
 ## Evidence and remaining surfaces
 
@@ -69,7 +73,10 @@ rejects a different icon source.
 | Published v0.1.0 NSIS installer resources | Neither application ICO is embedded; explicit configuration added |
 | Current source, all six desktop formats | Regeneration check; no replacement artwork |
 | Current Linux window icon | Native context regression requires at least 256 pixels |
-| New Linux packages and installed Windows test build | Package-check workflow; record run before closing T-925 |
+| New Debian, RPM and AppImage contents | Linux job in [run 35265250714](https://github.com/itsMattGuenther/Linger/actions/runs/35265250714) passes all three exact-artwork and launcher checks |
+| New Windows NSIS installer, installed app, uninstaller and MSI app | Windows job in [run 35265897888](https://github.com/itsMattGuenther/Linger/actions/runs/35265897888) passes all four six-frame resource checks plus both installed shortcut targets; its caption probe needed the `ICON_SMALL` correction above |
+| New running Linux AppImage | T-929's actual CI AppImage opens on Wayland and X11; both 256×256 window icons match porch pixels exactly; see [input evidence](linux-input-checks.md#actual-appimage-evidence-2026-09-17) |
+| New running Windows caption | Corrected native probe in package-check workflow; record the passing run and inspect its PNG before closing T-925 |
 | Real Windows taskbar/Start menu and Omarchy launcher | Still need visual confirmation after installing the next release; cache behavior is not proved by resource checks |
 | macOS | No distributable exists; no platform pass claimed |
 

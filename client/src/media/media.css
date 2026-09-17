@@ -93,15 +93,37 @@
 }
 
 .att-expanded img {
+  flex: none;
+  width: auto;
+  height: auto;
   max-width: 100%;
-  max-height: calc(100vh - 80px);
+  /* Reserve room for the filename, padding and close control. */
+  max-height: calc(100vh - 112px);
   object-fit: contain;
 }
 
 .att-expanded-name {
+  flex: none;
+  max-width: 100%;
   margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-family: var(--font-mono);
   color: var(--text-muted);
+}
+
+.att-expanded-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
 }
 
 /* --------------------------------------------------------------------------

@@ -195,6 +195,10 @@ Hover a message for its buttons:
 Three ways, all the same thing: the **+ file** button, drag a file onto the box,
 or paste one from your clipboard.
 
+Click a posted image to expand it. It stays centered and fits the window, even
+when you resize it. Press **Escape**, click the preview, or choose **close** to
+return to the conversation.
+
 - Up to 500 MB per file.
 - **Location data is stripped from every photo, always.** Phone cameras record
   where a picture was taken, and Linger removes that before anyone else sees it.

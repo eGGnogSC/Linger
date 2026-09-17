@@ -332,6 +332,10 @@ Rate limit: 3 knocks per person per hour.
   GPS coordinates; silently sharing your home address in a privacy-focused app would be
   an embarrassing bug.
 - Video: server generates a poster frame and a blurhash. No transcoding in V1.
+- Expanded images are centered in the app viewport, not the message row. Fit
+  both dimensions without cropping, stretching or enlarging small originals;
+  keep fitting when the window resizes. Escape, a click or the close control
+  dismisses the preview and returns keyboard focus to its opener.
 
 ### 4.11 Export
 

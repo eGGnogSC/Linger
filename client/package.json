@@ -12,7 +12,8 @@
     "check": "tsc --noEmit",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.10",
@@ -23,6 +24,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tauri-apps/cli": "^2.9.0",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.0",

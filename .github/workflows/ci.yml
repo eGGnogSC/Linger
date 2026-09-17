@@ -150,6 +150,10 @@ jobs:
         run: pnpm check
       - name: test
         run: pnpm test
+      - name: browser engines
+        run: pnpm exec playwright install --with-deps chromium webkit
+      - name: browser layout and keyboard checks
+        run: pnpm test:browser
       - name: build
         run: pnpm exec vite build
 

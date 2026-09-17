@@ -300,6 +300,12 @@ in CI. Separate checks need additional services or browser engines:
   file-download and temporary knock feedback. Download tests simulate browser
   handoff success and refusal; installed-app downloads still need a real
   desktop check.
+  Composer tests also cover ordinary typing and Unicode/multiline insertion;
+  browser automation does not exercise Linux dictation drivers. See
+  [Linux input checks](docs/linux-input-checks.md) for the isolated native
+  comparison (`scripts/linux-input-check.sh`) and its optional developer
+  tools. The current AppImage's simulated-typing limitation has a
+  [clipboard workaround](docs/user-guide.md#appimage-troubleshooting).
   Playwright is a development-only dependency; its browsers are not shipped
   in Linger. CI tests Chromium and WebKit. These component checks do not replace
   testing a packaged desktop client. The installer may request administrator

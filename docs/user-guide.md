@@ -141,6 +141,36 @@ this launch, not your system graphics settings. If it works for you, use
 every Linux computer. If it still fails, keep the terminal error to share
 when asking for help; leave setup tokens and invite links out of screenshots.
 
+**Voxtype puts numbers or symbols into chat instead of your words:** use
+clipboard output, then paste. The `0.1.0` AppImage forces X11; on a Wayland
+desktop, simulated typing can be corrupted before Linger receives it.
+
+With your existing Voxtype daemon running, start **one recording** from a
+terminal on your computer:
+
+```bash
+voxtype record start --clipboard --no-auto-submit
+```
+
+Speak, then run:
+
+```bash
+voxtype record stop
+```
+
+Wait for transcription to finish, click Linger's message box, and press
+**Ctrl+V yourself**. Review the draft before pressing Enter. This replaces your
+clipboard contents, but does not change your normal dictation shortcut or
+Voxtype settings. It uses Voxtype's
+[per-recording output override](https://github.com/peteonrails/voxtype/blob/dev/docs/USER_MANUAL.md#voxtype-record).
+Avoid automatic `--paste` for this workaround: its simulated Ctrl+V can also
+hit the failing input path. Clipboard insertion is verified; a complete
+spoken recording still needs your check.
+
+Do not edit the extracted AppImage or change global graphics settings to fix
+this. The packaging limitation and developer reproduction are tracked in
+[Linux input checks](linux-input-checks.md).
+
 ---
 
 ## The window

@@ -285,8 +285,9 @@ flows and do not start a new milestone. Evidence and rationale are in the
   the browser has finished saving; regression tests cover both surfaces and
   URL handling. Record what still needs installed Windows/Linux validation.
 
-  **Completed 2026-09-17** (PR #70, awaiting merge after #69). A refused native browser handoff reproduces
-  the silent failure in a real browser regression. The fix labels the action
+  **Completed 2026-09-17** (PR #70, awaiting merge after #69). A refused native
+  browser handoff reproduces the silent failure in a real browser regression.
+  The fix labels the action
   `download in browser`, reports refusal, permits retry and offers a selectable
   link without claiming a completed save. Chat and media tests cover relative
   and signed URLs. All 420 client tests, 29 Chromium cases, typecheck,
@@ -294,19 +295,21 @@ flows and do not start a new milestone. Evidence and rationale are in the
   Chromium/WebKit cases. Installed Windows/Omarchy validation remains; the
   original desktop's refusal is not diagnosed. No release check was closed.
 
-- ⏳ **T-927 · Clear temporary knock feedback** — effort: **medium** —
+- ✅ **T-927 · Clear temporary knock feedback** — effort: **medium** —
   Matt, 2026-09-17.
   Reproduce the persistent sender-side `knocked` label separately from the
   recipient card. Restore the action after brief feedback without weakening
   server rate limits or retaining knock history. Cover timeout, failures and
   component lifecycle; keep the real two-machine check distinct.
 
-  **Verification 2026-09-17:** the sender regression fails before the change.
+  **Completed 2026-09-17** (PR #71, awaiting merge after #70). The sender
+  regression fails before the change.
   Success now resets after three seconds; pending requests remain disabled,
   errors remain retryable, and old responses/timers cannot affect another
   card. All 37 Chromium cases, 420 client tests, typecheck, production build
   and the full local gate pass. Recipient cards, sound and server limits are
-  unchanged. CI and the two-machine HC-6 check remain separate.
+  unchanged. CI passes, including all 74 Chromium/WebKit cases. The two-machine
+  HC-6 check remains open; no release check was closed.
 
 - ⏳ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high** —
   Matt, 2026-09-17.
@@ -315,6 +318,31 @@ flows and do not start a new milestone. Evidence and rationale are in the
   add transcription, capture audio, collect window titles, or change global
   desktop settings. Record an evidence-based limitation if the cause is an
   external component rather than claiming a speculative composer fix.
+
+  **Finding 2026-09-17:** the AppImage hook forces X11. The native comparison
+  reproduces corrupted wtype input under XWayland in GTK, plain WebKit and
+  Linger's real composer, but not native Wayland. Clipboard/native paste
+  succeeds on both display paths; slowing typing does not fix XWayland.
+  `docs/linux-input-checks.md` records the method and limitations, and the
+  user guide supplies a per-recording clipboard workaround. No composer
+  behavior or global desktop setting was changed. Spoken dictation, physical
+  paste and a packaged Wayland solution remain distinct checks; T-929 owns
+  the packaging follow-up. This is a diagnosed external limitation with a
+  tested input workaround, not a claim that AppImage typing is repaired.
+  All 18 native comparison results are recorded; all Wayland and clipboard
+  controls match, and all six XWayland typing cases reproduce corruption.
+  The full local gate, 420 client tests, 38 Chromium cases, typecheck,
+  production build, rules, version, shell syntax and doc checks pass. CI is
+  pending.
+
+- ⬜ **T-929 · Evaluate native Wayland for packaged Linux input** — effort:
+  **high**. T-928 isolates wtype corruption to XWayland; the current AppImage
+  startup hook forces X11 as a graphics compatibility fallback. Evaluate a
+  supported per-launch native Wayland option before changing that default.
+  *Accept:* test actual packaged startup, typing, paste, graphics and updates
+  on Wayland and X11, including a machine that needs the GBM workaround.
+  Preserve a working fallback. Do not claim system-WebKit fixture results
+  prove an AppImage works; see `docs/linux-input-checks.md`.
 
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**

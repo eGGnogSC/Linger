@@ -1235,7 +1235,8 @@ interface Pending {
   problem: string | null;
 }
 
-function Composer({
+/** Keep text entry testable without connecting a real account or message stream. */
+export function Composer({
   api,
   room,
   title,
@@ -1563,4 +1564,3 @@ function listOf(names: readonly string[]): string {
   const last = names[names.length - 1] ?? "";
   return `${names.slice(0, -1).join(", ")} and ${last}`;
 }
-

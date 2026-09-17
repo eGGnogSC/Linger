@@ -1,4 +1,4 @@
-# Linux dictation input: T-928
+# Linux dictation input: T-928 / T-929
 
 ## Finding, 2026-09-17
 
@@ -54,12 +54,44 @@ key press or a spoken recording, and does not claim those end-to-end checks
 passed. Automatic paste still synthesizes keys, so it is not the recommended
 control.
 
-The AppImage itself has not been rebuilt or changed by this task. A packaged
+T-928 did not rebuild or change the AppImage. A packaged
 native Wayland option needs its own startup, input, graphics and update tests,
 including computers that needed the documented GBM workaround. Do not remove
 the packaging fallback based only on a system-WebKit developer test. T-929
 tracks that follow-up. No server change, protocol change, text rewriting or
 dictation feature was added to Linger.
+
+## T-929: opt-in packaged backend
+
+New builds accept `LINGER_LINUX_BACKEND=wayland` or `x11`. The binary applies
+this after the AppImage launcher, before GTK and worker threads start. An
+unset option preserves the current fallback; invalid values stop with a clear
+error. A comma-separated fallback list is deliberately not accepted: silently
+falling back to X11 could make dictation corrupt again without explanation.
+
+For a **test build containing T-929**, replace the filename below with that
+build's path. This command does not work around the old published v0.1.0:
+
+```bash
+LINGER_LINUX_BACKEND=wayland /path/to/new-linger.AppImage
+```
+
+If graphics fail, quit it and return to the existing X11 route:
+
+```bash
+LINGER_LINUX_BACKEND=x11 WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 /path/to/new-linger.AppImage
+```
+
+Use the clipboard workaround on that fallback. Do not globally set these
+variables, change Voxtype's normal shortcut, patch extracted package files or
+disable updater verification. The choice belongs in the launch command, so
+the same command can be used after an update replaces that file. A fresh
+download at a different path needs the command's filename adjusted.
+
+Packaged startup/input/graphics and update evidence must be recorded here
+before calling T-929 complete. The older system-WebKit fixture is a diagnostic
+control, not proof that this option works inside the AppImage. Synthetic input
+does not prove a spoken Voxtype recording or physical-keyboard paste works.
 
 ## Repeat the native comparison
 

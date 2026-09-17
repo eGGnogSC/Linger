@@ -63,6 +63,13 @@ Consequences:
    supported and is required by §4.5 of the spec; verify it in the target WebKitGTK
    version during M0.
 
+Linux startup accepts an explicit `LINGER_LINUX_BACKEND=wayland` or `x11`
+before initializing GTK. This app-specific choice overrides an AppImage
+launcher's `GDK_BACKEND` assignment; an unset variable leaves the packaging
+fallback unchanged. Invalid values fail clearly. It is a per-launch option,
+not a global desktop change or an automatic graphics fallback. See
+`docs/linux-input-checks.md` for packaged evidence and hardware limits.
+
 ---
 
 ## 3. Repository layout

@@ -281,6 +281,12 @@ package checks and remaining visual checks. Packaging changes run an unsigned
 Linux/Windows test build; these artifacts do not ship an update. Published
 v0.1.0 predates the porch artwork, so it still has the previous icon.
 
+Linux builds from this tree also accept `LINGER_LINUX_BACKEND=wayland` (opt-in)
+or `x11` (fallback) before GTK starts. This survives the AppImage launcher's
+forced X11 setting without modifying the package. The published v0.1.0 does
+not support it. See [Linux input checks](docs/linux-input-checks.md) before
+using it for dictation; the default backend and updater trust are unchanged.
+
 ```bash
 # Debian/Ubuntu
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev \

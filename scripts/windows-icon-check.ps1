@@ -30,7 +30,13 @@ foreach ($folder in @([Environment]::GetFolderPath('Programs'), [Environment]::G
     foreach ($file in Get-ChildItem $folder -Filter '*linger*.lnk' -Recurse) {
         $shortcut = $shell.CreateShortcut($file.FullName)
         if ($shortcut.TargetPath -eq $exe) {
-            if ($shortcut.IconLocation -and $shortcut.IconLocation -notlike "$exe,*") { throw 'Shortcut uses another icon' }
+            # NSIS leaves the icon path empty to use the target's first icon.
+            # WScript serializes that default as ",0", not an empty string.
+            $location = $shortcut.IconLocation.Trim()
+            Write-Output "Linger shortcut icon location: '$location'"
+            if ($location -and $location -notmatch '^,\s*0$' -and $location -ne "$exe,0" -and $location -ne "$exe, 0") {
+                throw 'Shortcut uses another icon'
+            }
             $shortcuts += $file.Name
         }
     }

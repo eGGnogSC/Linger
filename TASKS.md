@@ -356,6 +356,17 @@ flows and do not start a new milestone. Evidence and rationale are in the
   Preserve a working fallback. Do not claim system-WebKit fixture results
   prove an AppImage works; see `docs/linux-input-checks.md`.
 
+  **Implementation ready; field acceptance open, 2026-09-17 (PR #78).**
+  `LINGER_LINUX_BACKEND=wayland|x11` applies after the AppImage launcher and
+  preserves the default X11 fallback. An actual CI-built AppImage preserves
+  synthetic typing and Unicode paste on Wayland; explicit/default X11 still
+  reproduces the typing defect and preserves paste. Both render under the
+  isolated software compositor; invalid options fail before GTK starts.
+  Package hash, method and remaining checks are in
+  [linux-input-checks.md](docs/linux-input-checks.md). Spoken input, physical
+  paste, hardware graphics and a signed update remain unclaimed. No system
+  packages or global desktop settings were changed; no release was published.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request

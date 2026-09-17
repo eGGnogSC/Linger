@@ -88,10 +88,9 @@ disable updater verification. The choice belongs in the launch command, so
 the same command can be used after an update replaces that file. A fresh
 download at a different path needs the command's filename adjusted.
 
-Packaged startup/input/graphics and update evidence must be recorded here
-before calling T-929 complete. The older system-WebKit fixture is a diagnostic
-control, not proof that this option works inside the AppImage. Synthetic input
-does not prove a spoken Voxtype recording or physical-keyboard paste works.
+The packaged results below establish the opt-in input path. Real graphics,
+spoken dictation and signed-update acceptance remain open; the default has
+not changed. The older system-WebKit fixture is only a diagnostic control.
 
 ### Repeat the packaged check
 
@@ -125,6 +124,36 @@ X11: typing was `DIFFERENT`, Unicode clipboard paste was `MATCH`. A separate
 new native-binary control selected Wayland and both samples matched; that
 control is not claimed as a packaged pass. The window icon in that native
 control was 256×256 and matched the approved porch pixels exactly.
+
+### Actual AppImage evidence, 2026-09-17
+
+The unsigned debug-profile AppImage from [package-check run 35264511433](https://github.com/itsMattGuenther/Linger/actions/runs/35264511433)
+contains T-929 at `bb1b0f6`. It packages the production frontend on the normal
+Ubuntu 22.04 build runner; it is not a published release. SHA-256:
+`887c11b413578b26a6ab3e66fe0e27cdfac4270d8d9a72da60be506a0e90aa04`.
+The run's old Linux icon-directory assertion failed after building; all three
+Linux packages pass the corrected resource check locally.
+
+| Launch choice | Actual backend | Synthetic typing | Unicode native paste |
+|---|---|---|---|
+| `wayland` | `GdkWaylandDisplay` | Exact | Exact |
+| `x11` | `GdkX11Display` | Corruption reproduced | Exact |
+| unset | `GdkX11Display` | Corruption reproduced | Exact |
+
+Both explicit routes open and render the onboarding screen under the private
+software-rendered compositor. Their running 256×256 window icons match the
+approved porch pixels exactly. An invalid backend exits with status 2 and the
+documented error before GTK starts. These checks use the unmodified package,
+not an extracted executable or a system-WebKit substitute.
+
+Updater configuration, signature verification and release endpoints are
+unchanged. The pinned Tauri restart implementation spawns the replacement
+with inherited environment, so the per-launch choice is retained by that
+code path. No signed update was installed in this test: test packages do not
+publish updater artifacts. HC-1's real update/install acceptance is still
+open. Also still needed: spoken Voxtype input, physical Ctrl+V, and normal
+accelerated graphics on the machine that required the GBM workaround. No
+system package, Voxtype shortcut or desktop setting was changed.
 
 ## Repeat the native comparison
 

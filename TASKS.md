@@ -252,6 +252,17 @@ flows and do not start a new milestone. Evidence and rationale are in the
   and small windows, including resizing while open. Escape/click dismissal
   and keyboard focus remain usable. No new runtime dependencies or wire types.
 
+- ⬜ **T-925 · Use the selected app icon on every desktop surface** — effort:
+  **medium**. The running Windows app was reported without the chosen icon;
+  the affected surface and cause have not been reproduced yet. Audit the
+  existing porch artwork through bundle configuration, packaged assets and
+  installed behavior. Check the app window, taskbar/dock, launcher/Start menu
+  and installer for each supported package; do not design a replacement icon.
+  *Accept:* record Windows and Linux results, including the Omarchy AppImage,
+  with package/version and the surface checked. Distinguish incorrect assets
+  or app identity from stale OS icon caches. Check macOS when a distributable
+  build is available; do not claim a platform passed from source inspection.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request

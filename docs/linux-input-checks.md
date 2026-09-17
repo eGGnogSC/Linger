@@ -1,4 +1,4 @@
-# Linux dictation input: T-928
+# Linux dictation input: T-928 / T-929
 
 ## Finding, 2026-09-17
 
@@ -54,12 +54,106 @@ key press or a spoken recording, and does not claim those end-to-end checks
 passed. Automatic paste still synthesizes keys, so it is not the recommended
 control.
 
-The AppImage itself has not been rebuilt or changed by this task. A packaged
+T-928 did not rebuild or change the AppImage. A packaged
 native Wayland option needs its own startup, input, graphics and update tests,
 including computers that needed the documented GBM workaround. Do not remove
 the packaging fallback based only on a system-WebKit developer test. T-929
 tracks that follow-up. No server change, protocol change, text rewriting or
 dictation feature was added to Linger.
+
+## T-929: opt-in packaged backend
+
+New builds accept `LINGER_LINUX_BACKEND=wayland` or `x11`. The binary applies
+this after the AppImage launcher, before GTK and worker threads start. An
+unset option preserves the current fallback; invalid values stop with a clear
+error. A comma-separated fallback list is deliberately not accepted: silently
+falling back to X11 could make dictation corrupt again without explanation.
+
+For a **test build containing T-929**, replace the filename below with that
+build's path. This command does not work around the old published v0.1.0:
+
+```bash
+LINGER_LINUX_BACKEND=wayland /path/to/new-linger.AppImage
+```
+
+If graphics fail, quit it and return to the existing X11 route:
+
+```bash
+LINGER_LINUX_BACKEND=x11 WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 /path/to/new-linger.AppImage
+```
+
+Use the clipboard workaround on that fallback. Do not globally set these
+variables, change Voxtype's normal shortcut, patch extracted package files or
+disable updater verification. The choice belongs in the launch command, so
+the same command can be used after an update replaces that file. A fresh
+download at a different path needs the command's filename adjusted.
+
+The packaged results below establish the opt-in input path. Real graphics,
+spoken dictation and signed-update acceptance remain open; the default has
+not changed. The older system-WebKit fixture is only a diagnostic control.
+
+### Repeat the packaged check
+
+The developer-only `scripts/appimage-input-check.sh` requires the same private
+compositor tools as the native comparison below, plus `grim`. It compiles a
+temporary GTK test module against the development headers, then loads that
+module into the **unchanged AppImage**. The module focuses and reads only the
+empty onboarding field, types a known sentence with `wtype`, and invokes native
+paste for a Unicode sample. It never clicks Continue or uses an account. The
+package's own WebKit/GTK libraries render the field; this is not the system
+WebKit fixture. The module is not part of a Linger build or release.
+
+```bash
+# An optional final argument keeps screenshots and results in a NEW directory.
+scripts/appimage-input-check.sh /path/to/new-linger.AppImage wayland /tmp/linger-wayland-evidence
+scripts/appimage-input-check.sh /path/to/new-linger.AppImage x11 /tmp/linger-x11-evidence
+```
+
+It refuses a standalone development executable. Every run gets private
+configuration, clipboard, D-Bus and a headless compositor with no physical
+input backend. No window names are read. Both graphics workarounds are set for
+software-rendered checks; this does **not** prove hardware acceleration works.
+Wayland must select `GdkWaylandDisplay` and preserve both samples exactly.
+X11 must select `GdkX11Display` and preserve paste; a typing `DIFFERENT` result
+is explicitly the known failure, not a passing dictation check. The helper
+also captures the app's own icon and window for inspection. Without an evidence
+directory it removes temporary files after reporting the results.
+
+The downloaded v0.1.0 AppImage, tested with `default` on 2026-09-17, selected
+X11: typing was `DIFFERENT`, Unicode clipboard paste was `MATCH`. A separate
+new native-binary control selected Wayland and both samples matched; that
+control is not claimed as a packaged pass. The window icon in that native
+control was 256×256 and matched the approved porch pixels exactly.
+
+### Actual AppImage evidence, 2026-09-17
+
+The unsigned debug-profile AppImage from [package-check run 35264511433](https://github.com/itsMattGuenther/Linger/actions/runs/35264511433)
+contains T-929 at `bb1b0f6`. It packages the production frontend on the normal
+Ubuntu 22.04 build runner; it is not a published release. SHA-256:
+`887c11b413578b26a6ab3e66fe0e27cdfac4270d8d9a72da60be506a0e90aa04`.
+The run's old Linux icon-directory assertion failed after building; all three
+Linux packages pass the corrected resource check locally.
+
+| Launch choice | Actual backend | Synthetic typing | Unicode native paste |
+|---|---|---|---|
+| `wayland` | `GdkWaylandDisplay` | Exact | Exact |
+| `x11` | `GdkX11Display` | Corruption reproduced | Exact |
+| unset | `GdkX11Display` | Corruption reproduced | Exact |
+
+Both explicit routes open and render the onboarding screen under the private
+software-rendered compositor. Their running 256×256 window icons match the
+approved porch pixels exactly. An invalid backend exits with status 2 and the
+documented error before GTK starts. These checks use the unmodified package,
+not an extracted executable or a system-WebKit substitute.
+
+Updater configuration, signature verification and release endpoints are
+unchanged. The pinned Tauri restart implementation spawns the replacement
+with inherited environment, so the per-launch choice is retained by that
+code path. No signed update was installed in this test: test packages do not
+publish updater artifacts. HC-1's real update/install acceptance is still
+open. Also still needed: spoken Voxtype input, physical Ctrl+V, and normal
+accelerated graphics on the machine that required the GBM workaround. No
+system package, Voxtype shortcut or desktop setting was changed.
 
 ## Repeat the native comparison
 

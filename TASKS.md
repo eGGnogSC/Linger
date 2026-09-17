@@ -276,7 +276,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   or app identity from stale OS icon caches. Check macOS when a distributable
   build is available; do not claim a platform passed from source inspection.
 
-  **Fix ready; installed-surface acceptance open, 2026-09-17 (PR #77).**
+  **PR #77 merged 2026-09-17; installed-surface acceptance open.**
   Published v0.1.0 predates the porch artwork;
   its AppImage and Windows application still contain the old icons. Explicit
   NSIS installer/uninstaller icons were also missing, and the Linux window
@@ -353,14 +353,25 @@ flows and do not start a new milestone. Evidence and rationale are in the
   installed and the private onboarding notes remain untracked. No release
   check was closed.
 
-- ⬜ **T-929 · Evaluate native Wayland for packaged Linux input** — effort:
-  **high**. T-928 isolates wtype corruption to XWayland; the current AppImage
+- ⏳ **T-929 · Evaluate native Wayland for packaged Linux input** — effort:
+  **high** — Matt, 2026-09-17. T-928 isolates wtype corruption to XWayland; the current AppImage
   startup hook forces X11 as a graphics compatibility fallback. Evaluate a
   supported per-launch native Wayland option before changing that default.
   *Accept:* test actual packaged startup, typing, paste, graphics and updates
   on Wayland and X11, including a machine that needs the GBM workaround.
   Preserve a working fallback. Do not claim system-WebKit fixture results
   prove an AppImage works; see `docs/linux-input-checks.md`.
+
+  **Implementation ready; field acceptance open, 2026-09-17 (PR #78).**
+  `LINGER_LINUX_BACKEND=wayland|x11` applies after the AppImage launcher and
+  preserves the default X11 fallback. An actual CI-built AppImage preserves
+  synthetic typing and Unicode paste on Wayland; explicit/default X11 still
+  reproduces the typing defect and preserves paste. Both render under the
+  isolated software compositor; invalid options fail before GTK starts.
+  Package hash, method and remaining checks are in
+  [linux-input-checks.md](docs/linux-input-checks.md). Spoken input, physical
+  paste, hardware graphics and a signed update remain unclaimed. No system
+  packages or global desktop settings were changed; no release was published.
 
 - ✅ **T-930 · Quiet, controllable notification chimes** — effort: **high** —
   Matt, 2026-09-17. Extend the existing sound player. Voice-session joins,
@@ -379,7 +390,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   write. Voice membership cues are limited to the listener's session, control
   cues wait for a successful change, and PTT stays quiet. Native gateway replay
   metadata suppresses reconnect chimes without changing the wire protocol or
-  existing mention-banner batching. **PR #76 is ready and unmerged:** all CI
+  existing mention-banner batching. **PR #76 merged 2026-09-17:** all CI
   checks pass, including 88 Chromium/WebKit cases. A temporary combined tree
   with T-1407, T-925 and T-929 also passes the full local gate, all 438 client
   tests, 44 Chromium cases and production build. Real Linux/
@@ -1239,7 +1250,7 @@ them, and cmake installs fine in user space.
   replay across a forced disconnect. Native tests cover tone/silence, playback
   queues and restoration; browser tests exercise the real controls. The full
   local gate, 425 client tests, 42 Chromium cases, typecheck and production
-  build pass. **PR #75 is ready and unmerged:** all CI checks pass, including
+  build pass. **PR #75 merged 2026-09-17:** all CI checks pass, including
   84 Chromium/WebKit browser cases and the server image build. Installed Linux/
   Windows listening and the existing real-network checks remain open.
 

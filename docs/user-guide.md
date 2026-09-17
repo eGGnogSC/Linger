@@ -171,6 +171,13 @@ Do not edit the extracted AppImage or change global graphics settings to fix
 this. The packaging limitation and developer reproduction are tracked in
 [Linux input checks](linux-input-checks.md).
 
+**Testing a newer build on Wayland:** builds containing the T-929 fix accept
+`LINGER_LINUX_BACKEND=wayland` before the AppImage command. The currently
+published **v0.1.0 does not support this option**; use the clipboard workaround
+above with that version. The developer check page records the test commands
+and graphics limits. Native Wayland is opt-in; no desktop-wide setting needs
+to change.
+
 ---
 
 ## The window

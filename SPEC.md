@@ -322,6 +322,11 @@ Low-obligation contact is the thing group chats are worst at.
 
 Rate limit: 3 knocks per person per hour.
 
+The sender sees `knocked` for three seconds, then the control resets. This
+acknowledges the request, not delivery; it is not knock history. The recipient's
+card still disappears after eight seconds. Changing cards or servers must not
+carry sender feedback to a different person.
+
 ### 4.10 File sharing
 
 - 500 MB per file

@@ -256,10 +256,12 @@ add a third person later; a different set of people is a different
 conversation.
 
 **Knocking.** On the same card, **knock** is a tap on the shoulder: the other
-person sees a small card for a few seconds and hears a soft sound, and then it
-is gone. There is no message and nothing for them to answer. Three an hour per
-person, so it stays a tap. Nothing happens between 22:00 and 08:00 on their
-clock unless they have turned quiet hours off.
+person sees a small card for eight seconds, then it is gone. Your button says
+**knocked** for three seconds, then returns to **knock**; that confirms the
+request, not that they saw it. There is no message and nothing for them to
+answer. Three an hour per person, so it stays a tap. A soft sound accompanies
+the card unless sounds are muted or their quiet hours apply (22:00–08:00 by
+default). Quiet hours silence the sound, not the card.
 
 ## Finding things again
 

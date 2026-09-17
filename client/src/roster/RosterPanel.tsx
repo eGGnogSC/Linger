@@ -21,7 +21,7 @@
  * it is never hidden. Same component, same cards, laid out along instead of
  * down; `lib/layout.ts` owns the one number that decides which.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Room } from "../generated/Room";
 import type { User } from "../generated/User";
@@ -324,26 +324,44 @@ function MessageButton({
  * somebody and it costs them a card that fades — asking "are you sure" about
  * that would make it feel like more than it is.
  *
- * Afterwards it says so and stops, and the "knocked" is the end of it: there is
- * no delivery report, because the server does not keep one. If they were not
- * connected it landed nowhere, and that is the same as knocking on a door with
- * nobody behind it.
+ * The brief "knocked" feedback acknowledges the request, not delivery. It
+ * clears after three seconds; the server still enforces the hourly limit.
+ * If they were not connected it landed nowhere. No knock history is retained.
  *
  * Being refused is the interesting case. Three an hour, per person, is a rule
  * about not nagging somebody, so the refusal is said in those words rather than
  * as the server's generic "slow down".
  */
-function KnockButton({ api, user }: { api: AuthedApi; user: User }) {
+export function KnockButton({ api, user }: { api: AuthedApi; user: User }) {
+  // A late answer belongs to the old card, never another server or person.
+  return <KnockAction key={`${api.baseUrl}:${user.id}`} api={api} user={user} />;
+}
+
+function KnockAction({ api, user }: { api: AuthedApi; user: User }) {
   const [phase, setPhase] = useState<"idle" | "knocking" | "knocked">("idle");
   const [problem, setProblem] = useState<string | null>(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "knocked") return;
+    const timer = window.setTimeout(() => setPhase("idle"), 3000);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
 
   const knock = async (): Promise<void> => {
     setPhase("knocking");
     setProblem(null);
     try {
       await api.knock(user.id);
+      if (!mounted.current) return;
       setPhase("knocked");
     } catch (error) {
+      if (!mounted.current) return;
       setPhase("idle");
       setProblem(
         error instanceof ApiError && error.code === "RATE_LIMITED"

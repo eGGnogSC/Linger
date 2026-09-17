@@ -3,6 +3,7 @@
 //! has no others.
 
 pub mod gateway;
+mod notifications;
 mod secrets;
 mod updates;
 pub mod voice;
@@ -111,6 +112,7 @@ struct StatusEvent<'a> {
 struct FrameEvent<'a> {
     server: &'a str,
     frame: &'a ServerFrame,
+    replayed: bool,
 }
 
 /// Sends what one server's gateway client produces to the WebView.
@@ -246,12 +248,13 @@ impl gateway::Events for WindowEvents {
         );
     }
 
-    fn frame(&self, frame: &ServerFrame) {
+    fn frame(&self, frame: &ServerFrame, replayed: bool) {
         let _ = self.app.emit(
             gateway::FRAME_EVENT,
             FrameEvent {
                 server: &self.server,
                 frame,
+                replayed,
             },
         );
     }
@@ -485,6 +488,7 @@ pub fn run() {
             voice_controls,
             voice_volume,
             voice_devices,
+            notifications::show_notification,
             updates::app_version,
             updates::update_check,
             updates::update_install

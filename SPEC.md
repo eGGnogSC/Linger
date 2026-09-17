@@ -180,6 +180,26 @@ are person-to-person only. `@everyone` and `@here` do not exist and will not be 
 per person, per room. This is the notification setting people actually want, and no
 keyword-based system delivers it.
 
+**Notification chimes** (2026-09-17). Optional, short, quiet cues, with one
+master silence switch and separate controls for voice sessions, microphone/
+deafen controls, DMs, room messages and knocks. Voice/control/DM/knock sounds
+default on; ordinary room-message sounds default off. Quiet hours remain
+22:00–08:00 listener-local, default on. These settings silence notification
+chimes, not other people's voice; deafen is the control for that (§4.14).
+
+- Voice cues: your join, leave or move, and other sessions arriving/leaving
+  the voice session you are already in. No cue for browsing a text room, no
+  ringing someone who has not joined voice, and no sound on push-to-talk edges.
+- DM/room-message cues: new messages from others, not messages currently being
+  read in the focused app, edits, history loads, replay or duplicates. One
+  short cue per message burst, not a sound per line. DMs remain membership-filtered.
+- No sound from startup snapshots or reconnect replay. Audio-device failures
+  do not produce a success chime. Muting notification chimes leaves visual
+  notifications intact; desktop banners request silent presentation so they
+  do not double the app's chime.
+- Use the existing player. No uploads, remote assets or libraries for these
+  cues. Personal entrance sounds remain a separate, unbuilt feature (§4.1).
+
 Expect pushback on removing counts from people conditioned by ten years of them. Hold
 the line for at least one month of real use before revisiting.
 
@@ -460,9 +480,10 @@ and §4.9's knock is the same argument in miniature.
 That is also why M13's ambient voice is a small step rather than a rewrite: a room you
 leave running is what this already is.
 
-**No ringing and no calling.** Nobody's client makes a noise because somebody else
-turned a microphone on. You join, and the people in the room can see you have — the
-same weight of signal as walking into the room, drawn the same quiet way.
+**No ringing and no calling.** Joining voice never rings somebody who has not
+joined. People already in that voice session may hear a quiet join/leave cue,
+controlled by their notification sound settings (§4.2). Muting or unmuting
+someone else's microphone never makes a sound on your computer.
 
 **Full mesh, up to eight.** Every pair of clients connects directly to each other. At
 eight people that is 28 connections and a laptop does not notice; a selective forwarding

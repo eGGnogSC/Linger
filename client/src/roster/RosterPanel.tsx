@@ -117,12 +117,13 @@ export default function RosterPanel({
           type="button"
           className="roster-switch meta"
           aria-expanded={notifying || editing}
+          title="Choose desktop banner rules. Chimes are in settings → sound & voice."
           onClick={() => {
             if (editing) setEditing(false);
             else setNotifying((held) => !held);
           }}
         >
-          {editing || notifying ? "done" : "notify"}
+          {editing || notifying ? "done" : "notifications"}
         </button>
       </div>
       {showEditor && me !== null ? (

@@ -57,7 +57,8 @@ import {
 } from "./ipc";
 import type { IceServers } from "../generated/IceServers";
 import type { VoicePeer } from "../generated/VoicePeer";
-import { playKnock } from "./sound";
+import { playKnock, playSound } from "./sound";
+import { voiceCue } from "./sound-events";
 import type { AuthedApi } from "./api";
 
 /**
@@ -214,6 +215,7 @@ export interface MyVoice {
   /** Mic choice to restore after deafen; push-to-talk restores closed. */
   mutedBeforeDeafen: boolean;
   pushToTalk: boolean;
+  moved: boolean;
   /**
    * What the core says the microphone is doing: `opening` until the
    * devices are open, `sending` while frames flow, `stopped` if the device
@@ -832,20 +834,25 @@ async function attachListeners(): Promise<void> {
       if (status.kind === "needs_token") void supplyToken(server);
       publish(server, { ...stateOf(server), status });
     }),
-    listen<{ server: string; frame: ServerFrame }>("gateway:frame", (event) => {
-      const { server, frame } = event.payload;
+    listen<{ server: string; frame: ServerFrame; replayed?: boolean }>("gateway:frame", (event) => {
+      const { server, frame, replayed = false } = event.payload;
       if (!links.has(server)) return;
-      const seated = stateOf(server).myVoice !== null;
-      const next = apply(stateOf(server), frame);
+      const before = stateOf(server);
+      const seated = before.myVoice !== null;
+      const next = apply(before, frame);
       publish(server, next);
       // After the fold, never before: whether a message is worth interrupting
       // somebody for depends on who they are and what rules they have, and
       // the snapshot is where both of those live.
-      considerFrame(server, frame, next);
+      considerFrame(server, frame, next, replayed);
       // The card is drawn by the fold above; the noise is a side effect and
       // belongs out here with the other one. `playKnock` applies the mute and
       // the quiet hours itself, so a knock at 3am is a card and nothing more.
-      if (frame.op === "knock") playKnock();
+      if (!replayed) {
+        if (frame.op === "knock") void playKnock();
+        const cue = voiceCue(frame, before, next);
+        if (cue !== null) void playSound(cue);
+      }
       // Voice is the core's business, not this page's (ARCHITECTURE §2). These
       // two frames are handed straight over — the fold above ignores them, and
       // deliberately: nothing the store holds changes because a peer connection
@@ -1541,7 +1548,7 @@ export async function joinVoice(
   if (current.myVoice?.roomId === roomId) return;
   for (const [other, state] of Object.entries(states)) {
     if (state.myVoice !== null && (other !== server || state.myVoice.roomId !== roomId)) {
-      await leaveVoice(other);
+      await leaveVoice(other, false);
     }
   }
   publish(server, {
@@ -1552,6 +1559,7 @@ export async function joinVoice(
       deafened: previous?.deafened ?? false,
       mutedBeforeDeafen: startMuted || (previous?.mutedBeforeDeafen ?? false),
       pushToTalk: startMuted,
+      moved: previous !== undefined && previous !== null,
       audio: "opening",
       peers: {},
       speaking: {},
@@ -1580,11 +1588,12 @@ export async function joinVoice(
 }
 
 /** Turn the microphone off and let every peer go. Safe to call when not in voice. */
-export async function leaveVoice(server: string): Promise<void> {
+export async function leaveVoice(server: string, chime = true): Promise<void> {
   const current = stateOf(server);
   if (current.myVoice !== null) publish(server, { ...current, myVoice: null });
   await controlQueues.get(server)?.catch(() => undefined);
   await voiceLeave(server);
+  if (chime && current.myVoice !== null) void playSound("voice-leave");
 }
 
 const controlQueues = new Map<string, Promise<void>>();
@@ -1611,6 +1620,8 @@ function changeVoiceControls(server: string, change: (mine: MyVoice) => MyVoice)
       ...current.myVoice, muted: next.muted, deafened: next.deafened,
       mutedBeforeDeafen: next.mutedBeforeDeafen,
     } });
+    if (mine.deafened !== next.deafened) void playSound(next.deafened ? "deafen" : "undeafen");
+    else if (!mine.pushToTalk && mine.muted !== next.muted) void playSound(next.muted ? "mute" : "unmute");
   });
   controlQueues.set(server, task);
   void task.finally(() => {

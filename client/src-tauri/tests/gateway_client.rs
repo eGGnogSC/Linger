@@ -163,7 +163,7 @@ fn typing(seq: u64) -> Value {
 #[derive(Debug, Clone)]
 enum Note {
     Status(Status),
-    Frame(Box<ServerFrame>),
+    Frame(Box<ServerFrame>, bool),
 }
 
 struct Recorder {
@@ -175,8 +175,8 @@ impl Events for Recorder {
         let _ = self.tx.send(Note::Status(status));
     }
 
-    fn frame(&self, frame: &ServerFrame) {
-        let _ = self.tx.send(Note::Frame(Box::new(frame.clone())));
+    fn frame(&self, frame: &ServerFrame, replayed: bool) {
+        let _ = self.tx.send(Note::Frame(Box::new(frame.clone()), replayed));
     }
 }
 
@@ -205,12 +205,12 @@ impl Watcher {
         let note = self
             .until(what, |note| match note {
                 Note::Status(status) => matches(status),
-                Note::Frame(_) => false,
+                Note::Frame(_, _) => false,
             })
             .await;
         match note {
             Note::Status(status) => status,
-            Note::Frame(_) => unreachable!("matched on a status"),
+            Note::Frame(_, _) => unreachable!("matched on a status"),
         }
     }
 
@@ -230,7 +230,7 @@ impl Watcher {
             .iter()
             .filter_map(|note| match note {
                 Note::Status(status) => Some(status.clone()),
-                Note::Frame(_) => None,
+                Note::Frame(_, _) => None,
             })
             .collect()
     }
@@ -240,7 +240,7 @@ impl Watcher {
         self.seen
             .iter()
             .filter_map(|note| match note {
-                Note::Frame(frame) => frame.s,
+                Note::Frame(frame, _) => frame.s,
                 Note::Status(_) => None,
             })
             .collect()
@@ -367,7 +367,7 @@ async fn resume_replays_with_no_gaps_and_no_duplicates() {
     watch
         .until(
             "frame 3",
-            |note| matches!(note, Note::Frame(frame) if frame.s == Some(3)),
+            |note| matches!(note, Note::Frame(frame, _) if frame.s == Some(3)),
         )
         .await;
 
@@ -395,7 +395,7 @@ async fn resume_replays_with_no_gaps_and_no_duplicates() {
     watch
         .until(
             "frame 5",
-            |note| matches!(note, Note::Frame(frame) if frame.s == Some(5)),
+            |note| matches!(note, Note::Frame(frame, _) if frame.s == Some(5)),
         )
         .await;
 
@@ -404,6 +404,22 @@ async fn resume_replays_with_no_gaps_and_no_duplicates() {
         vec![0, 1, 2, 3, 4, 5],
         "every frame exactly once, in order"
     );
+    peer.send(&typing(6)).await;
+    watch
+        .until(
+            "live after replay",
+            |note| matches!(note, Note::Frame(frame, false) if frame.s == Some(6)),
+        )
+        .await;
+    let replayed: Vec<u64> = watch
+        .seen
+        .iter()
+        .filter_map(|note| match note {
+            Note::Frame(frame, true) => frame.s,
+            _ => None,
+        })
+        .collect();
+    assert_eq!(replayed, vec![4, 5]);
     handle.shutdown();
 }
 
@@ -428,11 +444,42 @@ async fn a_replayed_frame_is_not_delivered_twice() {
     watch
         .until(
             "frame 3",
-            |note| matches!(note, Note::Frame(frame) if frame.s == Some(3)),
+            |note| matches!(note, Note::Frame(frame, _) if frame.s == Some(3)),
         )
         .await;
 
     assert_eq!(watch.sequence(), vec![0, 1, 2, 3]);
+    handle.shutdown();
+}
+
+#[tokio::test]
+async fn unknown_replay_ops_do_not_make_later_live_frames_look_replayed() {
+    let server = FakeServer::bind().await;
+    let (handle, mut watch) = start(&server, "access-token");
+    let mut peer = server.accept().await;
+    peer.hello(30_000).await;
+    peer.recv().await;
+    peer.ready("session-1").await;
+    watch.until_ready().await;
+    peer.kill();
+    let mut peer = server.accept().await;
+    peer.hello(30_000).await;
+    assert_eq!(peer.recv().await["op"], "resume");
+    peer.send(&json!({"op":"resumed","d":{"replayed":2}})).await;
+    peer.send(&json!({"op":"future.op","d":{},"s":1})).await;
+    peer.send(&typing(2)).await;
+    peer.send(&typing(3)).await;
+    watch
+        .until(
+            "live frame",
+            |note| matches!(note, Note::Frame(frame, false) if frame.s == Some(3)),
+        )
+        .await;
+    assert!(watch
+        .seen
+        .iter()
+        .any(|note| matches!(note, Note::Frame(frame, true) if frame.s == Some(2))));
+    assert_eq!(watch.sequence(), vec![0, 2, 3]);
     handle.shutdown();
 }
 
@@ -453,7 +500,7 @@ async fn a_sequence_gap_starts_the_session_over() {
     watch
         .until(
             "frame 1",
-            |note| matches!(note, Note::Frame(frame) if frame.s == Some(1)),
+            |note| matches!(note, Note::Frame(frame, _) if frame.s == Some(1)),
         )
         .await;
     // 2 never arrives.
@@ -609,7 +656,7 @@ async fn an_acked_heartbeat_keeps_the_connection() {
     watch
         .until(
             "frame 1",
-            |note| matches!(note, Note::Frame(frame) if frame.s == Some(1)),
+            |note| matches!(note, Note::Frame(frame, _) if frame.s == Some(1)),
         )
         .await;
     handle.shutdown();
@@ -633,7 +680,7 @@ async fn an_unknown_op_is_ignored_without_losing_the_count() {
     watch
         .until(
             "frame 2",
-            |note| matches!(note, Note::Frame(frame) if frame.s == Some(2)),
+            |note| matches!(note, Note::Frame(frame, _) if frame.s == Some(2)),
         )
         .await;
     assert_eq!(

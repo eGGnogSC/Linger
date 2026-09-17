@@ -63,6 +63,10 @@ Consequences:
    while muted, and the speaker mixer discards voice while deafened, including
    queued samples. The page requests both controls together; the native engine
    applies them before sharing their state with the room (PROTOCOL §8).
+   Gateway delivery marks replayed frames in its local WebView envelope, not
+   on the wire. State still catches up without chimes; existing mention-banner
+   batching is unchanged. The existing sound player owns all notification audio;
+   native desktop banners explicitly request silent presentation.
 3. Avoid CSS features newer than ~2023 without checking WebKitGTK support. `oklch()` is
    supported and is required by §4.5 of the spec; verify it in the target WebKitGTK
    version during M0.

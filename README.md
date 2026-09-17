@@ -106,6 +106,10 @@ These terms are used everywhere — UI, code, docs, error messages:
   the roster. They get a soft knock and a card that fades on its own: no message, no
   thread, nothing to dismiss, and nothing written down at either end. Three an hour
   per person, and sounds are muted between 22:00 and 08:00 on your own clock
+- 🔉 **Optional chimes** — voice-session events, mic/deafen controls, DMs and
+  knocks; ordinary room-message sounds default off. Settings → sound & voice
+  has category switches, a master silence control and quiet hours. No chimes
+  for replayed messages, messages you are reading, or push-to-talk presses.
 - 🔎 **Search** *(the second piece of V2, built)* — `search` sits in the rail under the
   rooms, next to `media`, and `Ctrl`/`Cmd`+`K` opens it. It covers what people typed and
   the names of the files they shared. Whole words with English endings folded together,

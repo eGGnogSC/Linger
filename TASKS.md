@@ -359,6 +359,18 @@ flows and do not start a new milestone. Evidence and rationale are in the
   accessible settings; audition remains a real-listener check. This does not
   implement personal entrance sounds (T-901…T-903) or redesign the Console UI.
 
+  **Implemented 2026-09-17.** One synthesized sound player owns all chimes;
+  desktop banners explicitly request silence. Categories preserve existing
+  master/quiet-hour preferences and remain effective if storage refuses a
+  write. Voice membership cues are limited to the listener's session, control
+  cues wait for a successful change, and PTT stays quiet. Native gateway replay
+  metadata suppresses reconnect chimes without changing the wire protocol or
+  existing mention-banner batching. The full local gate, 437 client tests,
+  44 Chromium cases and production build pass; a further storage-quota
+  regression also passes (438 client tests total). CI is pending. Real Linux/
+  Windows listening, sound-device behavior and banner silence still need an
+  installed-client check; these are not HC-8/HC-9 evidence.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request
@@ -1185,7 +1197,7 @@ them, and cmake installs fine in user space.
   this fix, using a temporary toolchain. HC-8 and HC-9 remain open; merging
   the startup fix does not close the real-network voice checks.
 
-- ⏳ **T-1407 · Shared mute state and deafen** — effort: **high** — Matt,
+- ✅ **T-1407 · Shared mute state and deafen** — effort: **high** — Matt,
   2026-09-17. Show each voice session's self-reported mute/deafen state.
   Deafen silences incoming voice and mutes the microphone together; undeafen
   restores the previous mic choice (push-to-talk stays closed until pressed).
@@ -1206,7 +1218,8 @@ them, and cmake installs fine in user space.
   replay across a forced disconnect. Native tests cover tone/silence, playback
   queues and restoration; browser tests exercise the real controls. The full
   local gate, 425 client tests, 42 Chromium cases, typecheck and production
-  build pass. CI results will be recorded before closing this task. Installed Linux/
+  build pass. **PR #75 is ready and unmerged:** all CI checks pass, including
+  84 Chromium/WebKit browser cases and the server image build. Installed Linux/
   Windows listening and the existing real-network checks remain open.
 
 ### M13 — ambient voice

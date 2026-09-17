@@ -24,17 +24,17 @@
  * so a batch is keyed by both, and "the room you are looking at" is a server
  * and a room rather than a room on its own.
  */
-import { isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   isPermissionGranted,
   requestPermission,
-  sendNotification,
 } from "@tauri-apps/plugin-notification";
 
 import type { RoomId } from "../generated/RoomId";
 import type { ServerFrame } from "../generated/ServerFrame";
 import type { GatewayState } from "../lib/gateway";
 import { isLooking } from "../lib/looking";
+import { playSound } from "../lib/sound";
 import { plainText } from "../stream/markdown";
 import { notificationText, notifyReason } from "./rules";
 
@@ -80,17 +80,23 @@ export function considerFrame(
   server: string,
   frame: ServerFrame,
   snapshot: GatewayState,
+  replayed = false,
 ): void {
   if (frame.op !== "message.create") return;
   const me = snapshot.me;
   if (me === null) return;
 
   const message = frame.d;
-  if (notifyReason(message, me, snapshot.notifyRules) === null) return;
+  if (message.author_id === me.id || message.deleted_at !== null) return;
   // You are looking right at it. `isLooking` is the same clock the
   // read-marker uses: the window has your attention, not merely a room
   // selected on a second monitor.
   if (viewing?.server === server && viewing.roomId === message.room_id && isLooking()) return;
+
+  const dm = snapshot.dms.some((room) => room.id === message.room_id);
+  // Sound switches are independent of desktop-banner rules and permission.
+  if (!replayed) void playSound(dm ? "dm" : "room");
+  if (notifyReason(message, me, snapshot.notifyRules) === null) return;
 
   const slug = snapshot.rooms.find((room) => room.id === message.room_id)?.slug ?? "a room";
   const name =
@@ -134,7 +140,7 @@ async function show(title: string, body: string): Promise<void> {
       allowed = (await isPermissionGranted()) || (await requestPermission()) === "granted";
     }
     if (!allowed) return;
-    sendNotification({ title, body });
+    await invoke("show_notification", { title, body });
   } catch {
     // No notification daemon, a sandbox with no portal, a headless session.
     // The stream still shows the message; there is nothing to tell anyone.

@@ -284,8 +284,10 @@ flows and do not start a new milestone. Evidence and rationale are in the
   both installer surfaces and a 256-pixel Linux window icon. All six source
   formats regenerate correctly; Debian/RPM/AppImage resources and Windows
   NSIS/MSI application, installer/uninstaller resources pass. Installed
-  Windows shortcuts target the correct executable. Native-window evidence
-  and remaining real launcher/taskbar/cache checks are recorded in
+  Windows shortcuts target the correct executable. Its running caption icon
+  matches the approved 32-pixel PNG exactly; the actual Linux AppImage window
+  matches the 256-pixel PNG on both backends. CI runs and remaining real
+  launcher/taskbar/cache checks are recorded in
   [app-icon-checks.md](docs/app-icon-checks.md); no release has been published.
 
 - ✅ **T-926 · Make file downloads clear and report failures** — effort:

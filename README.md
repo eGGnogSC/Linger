@@ -197,6 +197,13 @@ domain is not required; two free dynamic-DNS names work. Uploads answer on the
 of latitude from a browser if it appears to come from the app itself. The server
 refuses to start if both names point at one place.
 
+**Voice across different networks needs the relay too.** Follow the
+[voice setup](docs/host-guide.md#voice-between-different-networks) for the
+shared secret and firewall ports, then start with
+`docker compose --profile voice up -d`. Check
+`docker compose --profile voice ps -a`: `coturn` must stay **Up**, not
+`Restarting` or `Exited`. Starting text chat alone does not start the relay.
+
 Everything else is inside the app. As host you get `+ room` and `manage` on the
 rail, which open one panel for rooms, invites, people, and the server's own name
 and accent. Nobody else sees those controls. None of it needs `curl` and none of

@@ -108,7 +108,6 @@ services:
           --fingerprint \
           --no-cli \
           --no-tls \
-          --no-dtls \
           --no-multicast-peers \
           --log-file=stdout
         # Behind a home router rather than on a machine with a public address?

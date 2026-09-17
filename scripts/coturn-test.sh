@@ -8,7 +8,7 @@ project="linger-coturn-test-$$"
 # Override any caller's secret; do not read deploy/.env.
 export LINGER_TURN_SECRET=linger-startup-test-only-not-a-real-secret
 compose() {
-  docker compose --env-file /dev/null --project-name "$project" \
+  timeout 120s docker compose --env-file /dev/null --project-name "$project" \
     -f deploy/compose.yaml -f - --profile voice "$@" <<'YAML'
 services:
   coturn:

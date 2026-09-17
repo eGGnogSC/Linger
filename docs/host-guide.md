@@ -129,7 +129,8 @@ so does **+ room**. A room needs a short name for after the `#` and, if you
 like, a topic.
 
 An invite link is the only way to get an account. There is no public sign-up.
-You can stop here; everything below is for later or for troubleshooting.
+Text chat is ready. For voice with friends on other networks, also complete
+[the voice setup](#voice-between-different-networks) below.
 
 ---
 
@@ -198,7 +199,7 @@ After a change, run `docker compose up -d` again.
 | `LINGER_MEDIA_DOMAIN` | The name files are served from. Set it if you are using two free names, or want something other than `cdn.` + your domain. It must be different from the main one. | `cdn.<your address>` |
 | `LINGER_STORAGE` | `local` keeps files on the machine. `s3` keeps them in a cloud bucket. | `local` |
 | `LINGER_DATA_DIR` | Where the database and files live inside the container. | `/data` |
-| `LINGER_TURN_SECRET` | Turns on the voice relay (see below). Goes in `.env`, not here. | unset — no relay |
+| `LINGER_TURN_SECRET` | Shared key for Linger and the relay. Goes in `.env`, not here; you must also start the relay below. | unset — no relay |
 | `LINGER_TURN_URLS` | Where the relay is, if not `turn:<your address>:3478`. Comma-separated `turn:`/`stun:` addresses. | derived from your address |
 
 One file can be up to 500 MB.
@@ -217,29 +218,49 @@ hide the computers behind them, and somebody has to introduce the two — that i
 a *relay*, and it is the third container in `compose.yaml`. It is yours, on your
 machine; what passes through it is scrambled sound it cannot listen to.
 
-1. Download the optional file, then copy it next to `compose.yaml`:
+Run these steps **on the server**, inside the `linger` folder containing
+`compose.yaml`.
+
+1. Download the secret template and make your `.env` file. If you already have
+   a `.env`, keep it; do not run the copy command again.
 
    ```bash
    curl -fLO https://raw.githubusercontent.com/itsMattGuenther/Linger/main/deploy/.env.example
    cp .env.example .env
    ```
-2. Put a long random secret in it: `openssl rand -hex 32` prints one. This one
-   value is shared between Linger and the relay and is the relay's only lock,
-   so make it long and do not reuse it anywhere.
-3. In `compose.yaml`, change `--realm=linger.example.com` to your address.
-4. Open two more things on your router or firewall: port **3478**, both TCP and
-   UDP, and UDP ports **49160 to 49200**. (If the machine is behind a home
+2. Run `openssl rand -hex 32`, then open `nano .env`. Paste the generated value
+   after `LINGER_TURN_SECRET=`. Save with **Ctrl+O**, Enter, then **Ctrl+X**.
+   Keep it private. Compose gives the same secret to Linger and coturn.
+3. In `compose.yaml`, change `--realm=linger.example.com` to your server's
+   name, without `https://` (for example, `--realm=linger.example.org`).
+4. Allow inbound port **3478**, both TCP and UDP, and UDP ports **49160 to
+   49200** in the provider's firewall and any firewall on the server. Keep
+   TCP **80 and 443** open too. (If the machine is behind a home
    router rather than on a public address, also uncomment `--external-ip` and
    put your public IP there.)
-5. Start with the relay switched on:
+5. Start Linger and the relay together so both read the secret:
    ```bash
    docker compose --profile voice up -d
    ```
    Without `--profile voice` the relay does not start, which is fine for a
    server that does not want one.
+6. Check that it **stays running**, not just that Docker printed `Started`:
 
-The server tells you at startup if it has no relay. Voice still works then,
-between machines on one network.
+   ```bash
+   docker compose --profile voice ps -a
+   ```
+
+   The `coturn` row should say **Up**, not `Restarting` or `Exited`. Wait
+   about 30 seconds and run the command again. An empty `PORTS` column for
+   coturn is normal: it uses the server's network directly.
+
+   If coturn is missing or not staying Up, use [the relay checks below](#voice-cannot-connect).
+   Then check `docker compose logs --tail=30 linger`: the latest startup
+   should no longer warn that `LINGER_TURN_SECRET` is missing.
+
+Finally, have two people on different networks leave and rejoin voice and
+check that each can hear the other. **Up only proves the relay process is
+running**; it does not prove that the firewall or voice connection works.
 
 ---
 
@@ -291,6 +312,15 @@ docker compose up -d
 
 Nothing updates itself. You decide when.
 
+If you use voice, include the profile in both commands so the relay updates too:
+
+```bash
+docker compose --profile voice pull
+docker compose --profile voice up -d
+```
+
+Repeat the [relay check](#voice-between-different-networks) after updating.
+
 ## Somebody forgot their password
 
 The server has one maintenance command. Stop it first — the database allows one
@@ -321,16 +351,31 @@ on TCP 443. Allow TCP 80 and 443. On a VPS check the provider and machine
 firewalls; at home check router forwarding too. A valid setup token cannot fix
 a connection failure.
 
+### Voice cannot connect
+
+Run `docker compose --profile voice ps -a` and find `coturn`:
+
+- **No coturn row:** finish [the voice setup](#voice-between-different-networks)
+  and start with `docker compose --profile voice up -d`.
+- **Restarting or Exited:** read the first error with
+  `docker compose --profile voice logs coturn | head -n 35`. A missing-secret
+  error means `.env` needs a value after `LINGER_TURN_SECRET=`. If an older
+  `compose.yaml` produces `unrecognized option '--no-dtls'`, remove only the
+  `--no-dtls` line from that file. Current coturn leaves DTLS listeners off
+  by default. Run `docker compose --profile voice up -d` after either fix
+  and check that coturn stays Up.
+- **Stays Up, but voice says `can't reach`:** check inbound TCP/UDP 3478 and
+  UDP 49160–49200 in both firewalls (and router forwarding at home). After
+  changing `.env`, run `docker compose --profile voice up -d` to apply the
+  same secret to both containers; restarting only coturn is not enough.
+
+Do not share your `.env` or setup token when asking for help.
+
 ### Other problems
 
 - **`unable to open database file` repeats in Linger's log.** The `data`
   folder is not writable by the container. Run the permission command in
   step 4, then `docker compose up -d` again. It does not delete the database.
-- **Voice connects on the same wifi but not between houses.** The relay is not
-  running, or its ports are not open. `docker compose ps` should list `coturn`;
-  if it does not, you started without `--profile voice`. If it is running,
-  check port 3478 (TCP and UDP) and UDP 49160–49200 reach the machine, and that
-  `.env` holds the same secret Linger was started with.
 - **Chat works but uploads fail.** The `cdn.` record is missing, or the second
   block of the Caddyfile still says `linger.example.com`.
 - **`docker compose pull` says `unauthorized`.** The prebuilt image is not

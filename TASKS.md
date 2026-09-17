@@ -1020,6 +1020,16 @@ them, and cmake installs fine in user space.
   empty secret, and CI exercises that startup path. No client or protocol
   changes. HC-8 and HC-9 remain open; a startup test is not a voice-call test.
 
+  **2026-09-17 progress:** the new CI smoke check reproduced the exact
+  `unrecognized option '--no-dtls'` failure against the shipped image before
+  removing the flag. The check runs the Compose command with no published
+  ports and a disposable secret, then checks the missing-secret refusal.
+  The host guide now checks for a stable `Up` state, diagnoses missing or
+  restarting relays, and keeps the voice profile when updating. Local rules,
+  version, shell syntax and Compose validation pass; the full local gate is
+  unavailable because Cargo is not installed. CI results belong to PR #66.
+  Keep this task claimed pending verification/review, not the milestone closed.
+
 ### M13 — ambient voice
 
 *Milestone check: leave a room running for a working day; it costs almost no
@@ -1418,6 +1428,13 @@ the one AGENTS §"Where you will be wrong" was written about, and nothing on a
 dev box can stand in for it — the relay could not even be started there.*
 
 Do HC-8 first; it takes the network out of the question.
+
+**Partial field evidence, 2026-09-17:** a host on Omarchy and a friend on
+Windows reported working two-way voice across separate networks through their
+DigitalOcean-hosted setup, after removing the rejected coturn flag (T-1406).
+Rooms, emojis, DMs and status also worked during that session. Carrier-grade
+NAT, relay selection, device changes and the four-person hour were not
+verified. HC-8 and HC-9 remain open.
 
 1. On your real server, follow the host guide's *Voice between different
    networks*: a secret in `.env`, your address as the realm, the four ports

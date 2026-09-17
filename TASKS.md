@@ -217,7 +217,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   local/server context and verification stops; setup, invites and relay
   instructions remain accurate. Keep private field notes out of the commit.
 
-  **Completed 2026-09-17** (PR #67, awaiting merge after #66). Docker install
+  **Completed 2026-09-17** (PR #67, merged). Docker install
   and checks are step 1; the linked VPS guide covers public-key copying,
   key-only SSH with a changing IP, and provider firewall rules. Domain,
   storage and optional realm edits are grouped before the Caddyfile edit.
@@ -234,7 +234,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   the app, Linux reopening/troubleshooting is copyable, and a new member is
   told to obtain an invite before trying a username and password.
 
-  **Completed 2026-09-17** (PR #68, awaiting merge after #67). Download and
+  **Completed 2026-09-17** (PR #68, merged). Download and
   launch paths now match the published x64 assets. Invite registration,
   existing-account sign-in and private host setup are separate instructions;
   updates name the actual settings tab and buttons, with a manual fallback.
@@ -252,7 +252,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   and small windows, including resizing while open. Escape/click dismissal
   and keyboard focus remain usable. No new runtime dependencies or wire types.
 
-  **Completed 2026-09-17** (PR #69, awaiting merge after #68). The browser
+  **Completed 2026-09-17** (PR #69, merged). The browser
   regression reproduced a preview positioned inside the transformed message
   row instead of the viewport. Expansion now uses a body portal, preserves
   aspect ratio, fits both dimensions on resize and contains long filenames.
@@ -285,7 +285,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   the browser has finished saving; regression tests cover both surfaces and
   URL handling. Record what still needs installed Windows/Linux validation.
 
-  **Completed 2026-09-17** (PR #70, awaiting merge after #69). A refused native
+  **Completed 2026-09-17** (PR #70, merged). A refused native
   browser handoff reproduces the silent failure in a real browser regression.
   The fix labels the action
   `download in browser`, reports refusal, permits retry and offers a selectable
@@ -302,7 +302,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   server rate limits or retaining knock history. Cover timeout, failures and
   component lifecycle; keep the real two-machine check distinct.
 
-  **Completed 2026-09-17** (PR #71, awaiting merge after #70). The sender
+  **Completed 2026-09-17** (PR #71, merged). The sender
   regression fails before the change.
   Success now resets after three seconds; pending requests remain disabled,
   errors remain retryable, and old responses/timers cannot affect another
@@ -319,8 +319,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   desktop settings. Record an evidence-based limitation if the cause is an
   external component rather than claiming a speculative composer fix.
 
-  **Completed diagnosis/workaround 2026-09-17** (PR #72, awaiting merge after
-  #71). The AppImage hook forces X11. The native comparison
+  **Completed diagnosis/workaround 2026-09-17** (PR #72, merged).
+  The AppImage hook forces X11. The native comparison
   reproduces corrupted wtype input under XWayland in GTK, plain WebKit and
   Linger's real composer, but not native Wayland. Clipboard/native paste
   succeeds on both display paths; slowing typing does not fix XWayland.
@@ -1149,7 +1149,7 @@ them, and cmake installs fine in user space.
 
 ---
 
-- ⏳ **T-1406 · Keep the shipped voice relay starting** — effort: **medium** —
+- ✅ **T-1406 · Keep the shipped voice relay starting** — effort: **medium** —
   Matt, 2026-09-17. The onboarding test found that `coturn/coturn:4` rejects
   the shipped `--no-dtls` flag and repeatedly exits. Remove the obsolete flag,
   test the actual Compose command against the image, and make the host guide
@@ -1167,7 +1167,12 @@ them, and cmake installs fine in user space.
   restarting relays, and keeps the voice profile when updating. Local rules,
   version, shell syntax and Compose validation pass; the full local gate is
   unavailable because Cargo is not installed. CI results belong to PR #66.
-  Keep this task claimed pending verification/review, not the milestone closed.
+
+  **Completed 2026-09-17** (PR #66, merged). CI passed, including the actual
+  relay startup/missing-secret smoke check and server image build. The full
+  local gate also passed on the subsequent onboarding branches containing
+  this fix, using a temporary toolchain. HC-8 and HC-9 remain open; merging
+  the startup fix does not close the real-network voice checks.
 
 ### M13 — ambient voice
 

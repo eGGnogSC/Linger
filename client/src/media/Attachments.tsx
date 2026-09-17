@@ -12,7 +12,8 @@
  * file that is not an image, a video or a sound is never rendered — it is
  * handed to the system browser to save, which is where a download belongs.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { Attachment } from "../generated/Attachment";
 import { openExternal } from "../lib/external";
@@ -95,28 +96,47 @@ function One({ file, baseUrl, onExpand }: { file: Attachment; baseUrl: string; o
 }
 
 /**
- * The expanded picture. Escape closes it, so does clicking anywhere — there is
- * nothing else on this layer and nothing to aim at.
+ * Render outside the transformed, clipped message row so fixed positioning
+ * refers to the viewport. Keep keyboard focus on the preview until it closes.
  */
 function Expanded({ file, baseUrl, onClose }: { file: Attachment; baseUrl: string; onClose: () => void }) {
+  const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose();
+    const opener = document.activeElement;
+    closeButton.current?.focus({ preventScroll: true });
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
-  return (
+  return createPortal(
     <div
       className="att-expanded"
       role="dialog"
       aria-modal="true"
       aria-label={file.filename}
-      onClick={onClose}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+        } else if (event.key === "Tab") {
+          // The close button is the only focusable control in this dialog.
+          event.preventDefault();
+          closeButton.current?.focus({ preventScroll: true });
+        }
+      }}
     >
+      <button ref={closeButton} type="button" className="att-expanded-close" aria-label="close image">
+        close
+      </button>
       <img src={absoluteUrl(baseUrl, file.url)} alt={file.filename} />
-      <p className="att-expanded-name meta">{file.filename}</p>
-    </div>
+      <p className="att-expanded-name meta" title={file.filename}>{file.filename}</p>
+    </div>,
+    document.body,
   );
 }

@@ -287,7 +287,7 @@ sudo pacman -S webkit2gtk-4.1 gtk3 librsvg alsa-lib cmake
 **Before pushing code, run `scripts/check.sh`.** It runs what CI runs, in the
 order CI runs it — rules lint, version check, fmt, clippy, workspace tests,
 bindings drift, frontend, and the desktop shell. Green there should mean green
-in CI. Two separate checks need additional services:
+in CI. Separate checks need additional services or browser engines:
 
 - `scripts/minio-test.sh` tests S3 against a throwaway MinIO. The workspace
   tests skip S3 without that service.
@@ -295,6 +295,14 @@ in CI. Two separate checks need additional services:
   that the shipped voice relay starts and refuses an empty secret, without
   opening host ports or using your server data. CI runs this too; it does not
   replace the voice checks on separate networks.
+- In `client`, run `pnpm exec playwright install --with-deps chromium webkit`
+  once, then `pnpm test:browser` for image-preview layout and keyboard checks.
+  Playwright is a development-only dependency; its browsers are not shipped
+  in Linger. CI tests Chromium and WebKit. These component checks do not replace
+  testing a packaged desktop client. The installer may request administrator
+  access for system libraries on supported Linux distributions. To use an
+  existing Chromium without installing browsers, run
+  `LINGER_CHROMIUM_PATH=/usr/bin/chromium pnpm test:browser --project=chromium`.
 
 For a **documentation-only** change, run `scripts/lint-rules.sh` and
 `scripts/version-check.sh`. CI still runs those quick checks, but skips the

@@ -19,6 +19,10 @@ permissions:
 
 jobs:
   packages:
+    env:
+      # These are inspectable test packages, not symbol archives. Full Rust
+      # debug info makes the WebRTC/WebKit link and AppImage needlessly huge.
+      CARGO_PROFILE_DEV_DEBUG: 0
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +42,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: client/src-tauri
+          cache-on-failure: true
       - name: Linux build tools
         if: runner.os == 'Linux'
         run: |

@@ -308,7 +308,8 @@ flows and do not start a new milestone. Evidence and rationale are in the
   and the full local gate pass. Recipient cards, sound and server limits are
   unchanged. CI and the two-machine HC-6 check remain separate.
 
-- ⬜ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high**.
+- ⏳ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high** —
+  Matt, 2026-09-17.
   Reproduce Voxtype output through the actual Linux input path, compare plain
   text input and clipboard insertion, and fix the responsible layer. Do not
   add transcription, capture audio, collect window titles, or change global

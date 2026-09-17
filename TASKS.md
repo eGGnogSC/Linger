@@ -209,6 +209,14 @@ Measure T-910 before describing a release as lightweight. These close existing
 flows and do not start a new milestone. Evidence and rationale are in the
 [release readiness review](docs/release-readiness.md).
 
+- ⏳ **T-922 · Make first-time VPS hosting a complete path** — effort:
+  **medium** — Matt, 2026-09-17. Make Docker installation a numbered action,
+  show SSH-key copying without assuming macOS, explain provider firewall
+  rules and dynamic home IPs, and group all Compose edits in one visit.
+  *Accept:* a fresh Ubuntu 24.04 VPS path has copyable commands, explicit
+  local/server context and verification stops; setup, invites and relay
+  instructions remain accurate. Keep private field notes out of the commit.
+
 - ⬜ **T-907 · Open healthy servers while another is unavailable** — effort:
   **high**
   `useSessions` waits for all saved servers, and the HTTP client has no request

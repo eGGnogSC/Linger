@@ -93,6 +93,39 @@ before calling T-929 complete. The older system-WebKit fixture is a diagnostic
 control, not proof that this option works inside the AppImage. Synthetic input
 does not prove a spoken Voxtype recording or physical-keyboard paste works.
 
+### Repeat the packaged check
+
+The developer-only `scripts/appimage-input-check.sh` requires the same private
+compositor tools as the native comparison below, plus `grim`. It compiles a
+temporary GTK test module against the development headers, then loads that
+module into the **unchanged AppImage**. The module focuses and reads only the
+empty onboarding field, types a known sentence with `wtype`, and invokes native
+paste for a Unicode sample. It never clicks Continue or uses an account. The
+package's own WebKit/GTK libraries render the field; this is not the system
+WebKit fixture. The module is not part of a Linger build or release.
+
+```bash
+# An optional final argument keeps screenshots and results in a NEW directory.
+scripts/appimage-input-check.sh /path/to/new-linger.AppImage wayland /tmp/linger-wayland-evidence
+scripts/appimage-input-check.sh /path/to/new-linger.AppImage x11 /tmp/linger-x11-evidence
+```
+
+It refuses a standalone development executable. Every run gets private
+configuration, clipboard, D-Bus and a headless compositor with no physical
+input backend. No window names are read. Both graphics workarounds are set for
+software-rendered checks; this does **not** prove hardware acceleration works.
+Wayland must select `GdkWaylandDisplay` and preserve both samples exactly.
+X11 must select `GdkX11Display` and preserve paste; a typing `DIFFERENT` result
+is explicitly the known failure, not a passing dictation check. The helper
+also captures the app's own icon and window for inspection. Without an evidence
+directory it removes temporary files after reporting the results.
+
+The downloaded v0.1.0 AppImage, tested with `default` on 2026-09-17, selected
+X11: typing was `DIFFERENT`, Unicode clipboard paste was `MATCH`. A separate
+new native-binary control selected Wayland and both samples matched; that
+control is not claimed as a packaged pass. The window icon in that native
+control was 256×256 and matched the approved porch pixels exactly.
+
 ## Repeat the native comparison
 
 This is a Linux developer diagnostic, not an end-user setup step. It needs

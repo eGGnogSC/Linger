@@ -276,7 +276,7 @@ flows and do not start a new milestone. Evidence and rationale are in the
   or app identity from stale OS icon caches. Check macOS when a distributable
   build is available; do not claim a platform passed from source inspection.
 
-- ⏳ **T-926 · Make file downloads clear and report failures** — effort:
+- ✅ **T-926 · Make file downloads clear and report failures** — effort:
   **medium** — Matt, 2026-09-17. Reproduce the silent browser-handoff failure
   behind attachment saving. Make the action explicit, show a useful failure
   with a recovery path, and cover both chat and the media collection. Keep
@@ -285,13 +285,14 @@ flows and do not start a new milestone. Evidence and rationale are in the
   the browser has finished saving; regression tests cover both surfaces and
   URL handling. Record what still needs installed Windows/Linux validation.
 
-  **Verification 2026-09-17:** a refused native browser handoff reproduces
+  **Completed 2026-09-17** (PR #70, awaiting merge after #69). A refused native browser handoff reproduces
   the silent failure in a real browser regression. The fix labels the action
   `download in browser`, reports refusal, permits retry and offers a selectable
   link without claiming a completed save. Chat and media tests cover relative
   and signed URLs. All 420 client tests, 29 Chromium cases, typecheck,
-  production build and the full local gate pass. CI and installed Windows/
-  Omarchy validation remain; the original desktop's refusal is not diagnosed.
+  production build, the full local gate and CI pass, including all 58
+  Chromium/WebKit cases. Installed Windows/Omarchy validation remains; the
+  original desktop's refusal is not diagnosed. No release check was closed.
 
 - ⏳ **T-927 · Clear temporary knock feedback** — effort: **medium** —
   Matt, 2026-09-17.
@@ -299,6 +300,13 @@ flows and do not start a new milestone. Evidence and rationale are in the
   recipient card. Restore the action after brief feedback without weakening
   server rate limits or retaining knock history. Cover timeout, failures and
   component lifecycle; keep the real two-machine check distinct.
+
+  **Verification 2026-09-17:** the sender regression fails before the change.
+  Success now resets after three seconds; pending requests remain disabled,
+  errors remain retryable, and old responses/timers cannot affect another
+  card. All 37 Chromium cases, 420 client tests, typecheck, production build
+  and the full local gate pass. Recipient cards, sound and server limits are
+  unchanged. CI and the two-machine HC-6 check remain separate.
 
 - ⬜ **T-928 · Diagnose and fix corrupted dictation input** — effort: **high**.
   Reproduce Voxtype output through the actual Linux input path, compare plain

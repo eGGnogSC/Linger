@@ -78,6 +78,34 @@
   color: var(--accent);
 }
 
+.att-download {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.att-download-note {
+  max-width: 38ch;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-label-size);
+  overflow-wrap: anywhere;
+}
+
+.att-download-url {
+  width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+}
+
 .att-expanded {
   position: fixed;
   inset: 0;

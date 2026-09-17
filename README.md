@@ -296,7 +296,9 @@ in CI. Separate checks need additional services or browser engines:
   opening host ports or using your server data. CI runs this too; it does not
   replace the voice checks on separate networks.
 - In `client`, run `pnpm exec playwright install --with-deps chromium webkit`
-  once, then `pnpm test:browser` for image-preview layout and keyboard checks.
+  once, then `pnpm test:browser` for image-preview layout, keyboard checks and
+  file-download feedback. Download tests simulate browser handoff success and
+  refusal; installed-app downloads still need a real desktop check.
   Playwright is a development-only dependency; its browsers are not shipped
   in Linger. CI tests Chromium and WebKit. These component checks do not replace
   testing a packaged desktop client. The installer may request administrator

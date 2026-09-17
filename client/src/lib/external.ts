@@ -16,12 +16,23 @@ import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 export function openExternal(href: string): void {
+  // Ordinary links retain their quiet behavior. Downloads use the checked
+  // form below so a refused handoff cannot look like a completed save.
+  void openExternalChecked(href).catch(() => undefined);
+}
+
+/** Report a refused handoff without treating browser launch as a finished download. */
+export async function openExternalChecked(href: string): Promise<void> {
+  const url = new URL(href);
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("Only web addresses can be opened.");
+  }
   if (isTauri()) {
-    // A refusal here is the capability doing its job, or a desktop with no
-    // browser registered. Neither is worth a dialog over a link.
-    void openUrl(href).catch(() => undefined);
+    await openUrl(href);
     return;
   }
   // `pnpm dev` in a plain browser, where there is no shell to hand it to.
+  // With noreferrer, browsers return null even for an allowed new window.
+  // The caller must not infer either a saved file or a blocked popup from it.
   window.open(href, "_blank", "noreferrer");
 }

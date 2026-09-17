@@ -199,6 +199,12 @@ Click a posted image to expand it. It stays centered and fits the window, even
 when you resize it. Press **Escape**, click the preview, or choose **close** to
 return to the conversation.
 
+For other files, **download in browser** opens your system browser. It may save
+straight to Downloads rather than ask where to save. Check its downloads list.
+If nothing happens or Linger reports a failure, retry or copy the displayed
+link into your browser. A file may have expired; a browser error is not a
+successful save. Treat download links as private, especially for DM files.
+
 - Up to 500 MB per file.
 - **Location data is stripped from every photo, always.** Phone cameras record
   where a picture was taken, and Linger removes that before anyone else sees it.

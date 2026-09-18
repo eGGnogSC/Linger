@@ -86,6 +86,23 @@ const rooms: Room[] = ["general", "listening-room", "weekend-plans"].map(
     member_ids: null,
   }),
 );
+// A single unbroken word with no spaces to break on, for the rail-overflow
+// regression (#83): a real room slug or server name can be this long, and
+// nothing about it gives the layout anywhere to wrap or truncate for free.
+const longWord =
+  "reallyreallyreallyreallyreallyreallyreallyreallylongunbrokenname";
+if (query.has("longnames"))
+  rooms.push({
+    id: "longroom",
+    slug: longWord,
+    name: longWord,
+    kind: "room",
+    topic: null,
+    position: rooms.length,
+    archived_at: null,
+    last_message_id: null,
+    member_ids: null,
+  });
 const bodies = [
   [
     "jules",
@@ -136,7 +153,7 @@ const messages: Message[] = (
   created_at: Date.now() - (all.length - index) * 180_000,
 }));
 const server = {
-  name: "The Good Company",
+  name: query.has("longnames") ? longWord : "The Good Company",
   accent_key: null,
   icon_key: null,
   member_count: users.length,

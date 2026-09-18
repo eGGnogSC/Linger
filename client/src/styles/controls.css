@@ -145,6 +145,10 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   margin-bottom: 0;
   padding: 0.625rem 0.875rem;
   border-left: 2px solid transparent;
+  /* A name too long for the row wraps instead of truncating (#83), so the
+     row can no longer assume one line. Top-align the occupancy dots with the
+     first line rather than the row's full, now-variable height. */
+  align-items: flex-start;
 }
 .rail .room-item[aria-current="true"],
 .rail .room-item[aria-pressed="true"] {
@@ -154,10 +158,25 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
 .rail .room-item:hover {
   background: var(--control-fill);
 }
+/* Names in the rail wrap rather than truncate (#83): nothing here is a
+   single guaranteed line any more, so every row's own text is allowed to
+   grow taller, and anything sitting beside it aligns to the top of that
+   text instead of its old, single-line center. */
+.rail .room-slug {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+.rail .room-stack {
+  /* Nudged down from the row's very top edge to sit near the cap-height of
+     the name's first line instead of floating above it. */
+  margin-top: 0.35em;
+}
 .rail .rail-places .room-item {
   display: flex;
   gap: 0.625rem;
-  align-items: center;
+  align-items: flex-start;
   border: 0;
   margin-inline: 0;
   padding: 0.625rem 0.875rem;
@@ -178,7 +197,10 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
 }
 .rail .server-row {
   display: flex;
-  align-items: center;
+  /* Same reasoning as .rail .room-item: the name below can now wrap to
+     several lines (#83), so the "Server options" trigger beside it
+     top-aligns rather than centering on a height that keeps changing. */
+  align-items: flex-start;
   margin-top: 0;
   border: 1px solid var(--hairline-strong);
   border-left: 2px solid transparent;
@@ -197,13 +219,20 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   flex: 1;
   background: none;
   font-size: 1rem;
+  align-items: flex-start;
 }
+.rail .server-dot {
+  /* Nudged to sit near the cap-height of the name's first line rather than
+     the top edge of a row that may now be several lines tall. */
+  margin-top: 0.35em;
+}
+/* The whole point of #83: this name wraps fully rather than clipping to two
+   lines with an ellipsis. */
 .rail .server-name {
   white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
 }
 .server-options-trigger {
   margin-right: 0.5rem;

@@ -47,6 +47,12 @@ Disabled controls remain recognizable but do not compete with available actions.
 
 Use sentence-case for any remaining visible labels.
 
+Navigation text wraps to the rail's width; it is never truncated with an
+ellipsis or a line clamp, no matter how long or unbreakable a server, room or
+DM name is. The rail itself never scrolls sideways — rows grow taller
+instead. Panel widths stay at the px values SPEC §5.5 sets; content inside a
+panel sizes to fit it, not the other way around.
+
 Voice participants are plain names, not pill-shaped selectors. A chevron beside
 the voice heading collapses the names; Join voice and call controls align right.
 Click, right-click or keyboard activation opens a person's contextual panel.

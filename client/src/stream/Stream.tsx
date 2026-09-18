@@ -30,7 +30,6 @@ import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
-  type ReactNode,
   type RefObject,
   useCallback,
   useEffect,
@@ -48,9 +47,9 @@ import type { Room } from "../generated/Room";
 import type { RoomId } from "../generated/RoomId";
 import type { User } from "../generated/User";
 import { ApiError, type AuthedApi } from "../lib/api";
+import { ActionIcon } from "../lib/icons";
 import { useNow } from "../lib/clock";
 import { dmLabel } from "../dm/dm";
-import { type Density } from "../lib/density";
 import { emptyRoom } from "../settings/copy";
 import {
   deleteMessage,
@@ -82,6 +81,7 @@ import { uploadFile } from "../lib/upload";
 import { linkTargets, mentionHandles, plainText } from "./markdown";
 import { REACTIONS, reactionOf, reactionTitle, reactionWeight } from "./reactions";
 import { buildRows, type StreamRow } from "./rows";
+import { useResizeAnchor } from "./resize";
 import { ageOpacity, clockTime, fullTime, sessionLabel } from "./time";
 import "./stream.css";
 
@@ -162,11 +162,6 @@ interface StreamProps {
   /** Everyone the server has told us about, for author names and colors. */
   users: User[];
   /**
-   * How the stream is laid out. Read here, never changed here: the control
-   * lives in settings, because it is a preference somebody sets once (T-904).
-   */
-  density: Density;
-  /**
    * A message to go and find, from the media collection (SPEC §4.4: "each item
    * links back to the message and moment it was posted in"). It may be well
    * outside the loaded history, so finding it means loading backwards until it
@@ -175,22 +170,14 @@ interface StreamProps {
   focus?: MessageId | null;
   /** Called once the hunt is over, found or not, so the frame can let go. */
   onFocused?: () => void;
-  /**
-   * The roster, on a window too narrow to give it a column of its own. It
-   * belongs here rather than in the frame because SPEC §3 puts the strip
-   * *above the composer*, and the composer is in this file.
-   */
-  roster?: ReactNode;
 }
 
 export default function Stream({
   api,
   room,
   users,
-  density,
   focus,
   onFocused,
-  roster,
 }: StreamProps) {
   const gateway = useGateway(api.baseUrl);
   const stream = gateway.streams[room.id];
@@ -252,9 +239,8 @@ export default function Stream({
   // stays somewhere you can find your way back to (SPEC §4.2).
   const leftOff = gateway.leftOff[room.id] ?? null;
   const rows = useMemo(
-    // IRC mode is one self-contained line per message, so it does not group.
-    () => buildRows(messages ?? [], { group: density !== "irc", atStart, leftOff }),
-    [messages, atStart, density, leftOff],
+    () => buildRows(messages ?? [], { atStart, leftOff }),
+    [messages, atStart, leftOff],
   );
 
   // Replies point at a message by id, and a reply line has to show what it is
@@ -292,6 +278,7 @@ export default function Stream({
     anchorTo: "end",
     followOnAppend: true,
   });
+  useResizeAnchor(scroller, virtualizer, room.id, rows.length, atEnd);
 
   // Walking into a room puts you at the newest message, not where you last
   // were.
@@ -302,12 +289,13 @@ export default function Stream({
   // of guesses and lands somewhere in the middle of the real one. Drawing the
   // rows it lands on corrects their heights, which moves the bottom again.
   //
-  // So jump once per frame until the last row is genuinely on screen. A frame
+  // So jump once per frame until the bottom has settled on screen. A frame
   // is the right beat because the browser reports a scroll asynchronously: jump
   // twice inside one frame and the second jump is aiming with the first one's
-  // stale numbers. And the test is "the last row is drawn", not "the total
-  // stopped growing" — the total holds still for a frame all the time while
-  // measurements are still arriving.
+  // stale numbers. A drawn row can still be outside the viewport (overscan),
+  // and one unchanged frame does not mean its measurements have arrived.
+  // Require both the actual bottom and several stable frames. Otherwise an
+  // early panel resize can leave WebKit a screenful above the last message.
   const landing = useRef({ room: "", done: false });
   useEffect(() => {
     if (rows.length === 0) return;
@@ -318,6 +306,8 @@ export default function Stream({
     if (!atEnd) return;
 
     let frames = 0;
+    let stable = 0;
+    let previousTotal = -1;
     let pending = 0;
     const step = (): void => {
       // A jump marks the landing done the moment it starts (`jumpTo`). Two
@@ -326,10 +316,20 @@ export default function Stream({
       if (landing.current.done) return;
       virtualizer.scrollToIndex(rows.length - 1, { align: "end" });
       const drawn = virtualizer.getVirtualItems();
+      const total = virtualizer.getTotalSize();
+      const element = scroller.current;
+      const atBottom =
+        element !== null &&
+        element.scrollHeight - element.scrollTop - element.clientHeight <= 1;
+      stable = atBottom && total === previousTotal ? stable + 1 : 0;
+      previousTotal = total;
       frames += 1;
       // The frame cap is a seatbelt, not a mechanism: a room that never settles
       // has to give the scrollbar back rather than fight for it forever.
-      if (drawn[drawn.length - 1]?.index === rows.length - 1 || frames >= 60) {
+      if (
+        (drawn[drawn.length - 1]?.index === rows.length - 1 && stable >= 5) ||
+        frames >= 60
+      ) {
         landing.current.done = true;
         return;
       }
@@ -601,10 +601,10 @@ export default function Stream({
     <main className="stream">
       <header className="stream-header">
         <span className="room-title">
-          <span className="room-name">{title}</span>
+          <span className="room-name" title={title}>{title}</span>
           {who !== "" ? <span className="room-occupancy meta">· {who}</span> : null}
         </span>
-        {room.topic ? <span className="room-topic meta">{room.topic}</span> : null}
+        {room.topic ? <span className="room-topic meta" title={room.topic}>{room.topic}</span> : null}
         {/* The way out of a historical window (SPEC §4.12). A room opened on a
             search hit is showing February, and without this the only route back
             to today is scrolling through everything in between. Reading
@@ -705,7 +705,6 @@ export default function Stream({
                         row.message.reply_to === null ? undefined : byId.get(row.message.reply_to)
                       }
                       now={now}
-                      irc={density === "irc"}
                       editing={editing === row.message.id}
                       flashing={flash === row.message.id}
                       onEditDone={() => setEditing(null)}
@@ -718,8 +717,6 @@ export default function Stream({
           </div>
         )}
       </div>
-
-      {roster}
 
       <Typing api={api} roomId={room.id} people={people} />
 
@@ -752,7 +749,6 @@ function MessageRow({
   mentions,
   repliedTo,
   now,
-  irc,
   editing,
   flashing,
   onEditDone,
@@ -767,7 +763,6 @@ function MessageRow({
   mentions: MentionLookup;
   repliedTo: Message | undefined;
   now: number;
-  irc: boolean;
   editing: boolean;
   flashing: boolean;
   onEditDone: () => void;
@@ -787,6 +782,47 @@ function MessageRow({
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
+  // Only a successful local gesture earns feedback. History and gateway
+  // replays render the same marks, but must never replay the little motion.
+  const reacting = useRef(false);
+  const live = useRef(true);
+  const [reactionPending, setReactionPending] = useState(false);
+  const [confirmedReaction, setConfirmedReaction] = useState<string | null>(null);
+  const [reactionNotice, setReactionNotice] = useState("");
+  useEffect(() => {
+    live.current = true;
+    return () => { live.current = false; };
+  }, []);
+  useEffect(() => {
+    if (confirmedReaction === null) return;
+    const timer = setTimeout(() => setConfirmedReaction(null), 200);
+    return () => clearTimeout(timer);
+  }, [confirmedReaction]);
+
+  const react = async (target: Message, key: string): Promise<void> => {
+    if (reacting.current) return;
+    reacting.current = true;
+    setReactionPending(true);
+    setConfirmedReaction(null);
+    setReactionNotice("");
+    setProblem(null);
+    const removing = me !== null && target.reactions.some(
+      (group) => group.key === key && group.user_ids.includes(me.id),
+    );
+    try {
+      await actions.react(target, key);
+      if (live.current) {
+        setConfirmedReaction(removing ? null : key);
+        setReactionNotice(removing ? "Reaction removed." : "Reaction added.");
+      }
+    } catch (error) {
+      if (live.current) setProblem(error instanceof ApiError ? error.message : "Couldn't reach the server.");
+    } finally {
+      reacting.current = false;
+      if (live.current) setReactionPending(false);
+    }
+  };
+
   // A delete the server refuses, or a reaction that didn't land, has to say so
   // next to the message it was aimed at. Anywhere else and it reads as being
   // about something you are not looking at.
@@ -803,7 +839,7 @@ function MessageRow({
       dateTime={new Date(message.created_at).toISOString()}
       title={fullTime(message.created_at)}
     >
-      {clockTime(message.created_at, irc)}
+      {clockTime(message.created_at)}
     </time>
   );
 
@@ -852,42 +888,28 @@ function MessageRow({
         <ReplyLine target={repliedTo} people={people} onJump={actions.jumpTo} />
       )}
 
-      {/* One line per message, timestamps in a fixed-width gutter, the aligned
-          nick column mIRC had (SPEC §5, §5.6). No group header, because there
-          is no group. */}
-      {irc ? (
-        <div className="msg-body">
+      {head ? (
+        <p className="msg-head">
+          <PersonName user={author} name={name} state={authorState} className="msg-author" baseUrl={api.baseUrl} />
           {time}
-          <PersonName user={author} name={name} state={authorState} className="irc-name" baseUrl={api.baseUrl} />
-          <span className="irc-text">{body}</span>
-        </div>
-      ) : (
-        <>
-          {head ? (
-            <p className="msg-head">
-              <PersonName user={author} name={name} state={authorState} className="msg-author" baseUrl={api.baseUrl} />
-              {time}
-            </p>
-          ) : null}
-          {/* Aging is one custom property, computed from the timestamp and
-              applied to the body only — never the name, never the time
-              (SPEC §5.6). */}
-          <div className="msg-body" style={bodyStyle}>
-            {body}
-          </div>
-        </>
-      )}
+        </p>
+      ) : null}
+      {/* Age only the body, never the author or timestamp (SPEC §5.6). */}
+      <div className="msg-body" style={bodyStyle}>{body}</div>
 
       {extras}
 
-      {problem ? <p className="msg-problem meta">{problem}</p> : null}
+      {problem ? <p className="msg-problem meta" role="alert">{problem}</p> : null}
+      <span className="sr-only" role="status">{reactionNotice}</span>
 
       {message.reactions.length === 0 ? null : (
         <Reactions
           message={message}
           me={me}
           people={people}
-          onReact={(target, key) => run(actions.react(target, key))}
+          confirmedKey={confirmedReaction}
+          pending={reactionPending}
+          onReact={(target, key) => void react(target, key)}
         />
       )}
 
@@ -901,8 +923,9 @@ function MessageRow({
                 className="msg-action msg-action-glyph"
                 title={reaction.label}
                 aria-label={`react with ${reaction.label}`}
+                disabled={reactionPending}
                 onClick={() => {
-                  run(actions.react(message, reaction.key));
+                  void react(message, reaction.key);
                   setPicking(false);
                 }}
               >
@@ -1102,11 +1125,15 @@ function Reactions({
   me,
   people,
   onReact,
+  confirmedKey,
+  pending,
 }: {
   message: Message;
   me: User | null;
   people: Map<string, User>;
   onReact: (message: Message, key: string) => void;
+  confirmedKey: string | null;
+  pending: boolean;
 }) {
   return (
     <div className="reactions">
@@ -1124,13 +1151,17 @@ function Reactions({
             type="button"
             className="reaction"
             data-mine={mine ? "true" : undefined}
+            data-confirmed={mine && confirmedKey === group.key ? "true" : undefined}
+            disabled={pending}
+            aria-busy={pending}
             style={{ "--weight": reactionWeight(group.count) }}
             title={reactionTitle(names, reaction.label)}
             aria-pressed={mine}
             aria-label={`${reaction.label}, ${counted}`}
             onClick={() => onReact(message, group.key)}
           >
-            <span aria-hidden="true">{reaction.glyph}</span>
+            <span className="reaction-glyph" aria-hidden="true">{reaction.glyph}</span>
+            {mine ? <span className="reaction-own" aria-hidden="true">✓</span> : null}
           </button>
         );
       })}
@@ -1477,7 +1508,7 @@ export function Composer({
           onClick={() => picker.current?.click()}
           aria-label="attach a file"
         >
-          + file
+          <ActionIcon name="plus" /> File
         </button>
         <input
           ref={picker}
@@ -1494,7 +1525,7 @@ export function Composer({
           type="submit"
           disabled={(draft.trim().length === 0 && ready.length === 0) || working}
         >
-          send
+          <ActionIcon name="send" /> Send
         </button>
       </div>
       {/* Only near the ceiling. A counter that is always on is a scold. */}

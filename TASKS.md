@@ -416,7 +416,13 @@ flows and do not start a new milestone. Evidence and rationale are in the
   pinned attachments retain the existing expiry protection. Read M10 and M11
   notes before touching history or visibility.
 
-- ⬜ **T-909 · Make Console controls readable and reachable** — effort: **medium**
+- ⏳ **T-909 · Make Console controls readable and reachable** — effort: **high** — Matt, 2026-09-17
+  **Console overhaul:** larger readable defaults, persistent interface scale,
+  draggable and keyboard-resizable side panels, a single server identity,
+  discoverable personal settings, `DMs` with an `empty` state, and a clearer
+  voice strip with participant controls on demand. Review the whole frame,
+  first-run forms, settings, contrast and responsive behavior together. Keep
+  styled names, no avatars, existing privacy boundaries and virtualized history.
   Review remaining muted/faint interactive text, focus states, empty/error
   states and the minimum desktop window. Use the existing tokens and layout.
   **Member-menu follow-up, 2026-09-17:** the first click on a member should
@@ -426,9 +432,39 @@ flows and do not start a new milestone. Evidence and rationale are in the
   destructive actions in the initial popover. No new roles or permission
   matrix; implement with the deferred Console UI/UX review, not this batch.
   *Accept:* current screenshots in both themes at 1100×720 and 760×480; all
-  three densities checked; keyboard-only use, larger text and reduced motion
+  supported interface scales checked; keyboard-only use and reduced motion
   checked; a friend finds settings, sends a file and joins voice unaided.
   Record contrast for enabled control labels, not just styled names.
+  **Design revision, 2026-09-17:** remove Density and the Compact/IRC modes.
+  Keep one comfortable presentation and make the frame adapt automatically.
+  On narrow windows, People may collapse behind a labelled button (approved
+  2026-09-17). Restore the column automatically when space allows.
+  **Implementation ready for review, 2026-09-17:** see
+  [Console review and checks](docs/console-ui-review.md) and the root
+  [screenshots](screenshots/README.md). The full local gate passes. Packaged
+  Windows/Omarchy and the unaided-friend acceptance remain open; keep T-909
+  in progress until those checks have evidence.
+  **Review follow-through:** scale is only in Appearance, visible branding is
+  Linger, ongoing voice controls remain reachable in other destinations, and
+  Settings copy is shorter. Wide message lines are bounded; actions use label
+  sizing instead of metadata sizing. See the review for research and evidence.
+  **Local interaction review, 2026-09-17:** [review 03](screenshots/review-03/README.md)
+  proposes plain voice names with a collapse chevron, compact toolbar icons,
+  bottom-anchored Media/Search, selected-server management and member popouts.
+  That iteration used the README banner on welcome. See the
+  [control style guide](docs/style-guide.md). Review 04 supersedes this
+  checkpoint; its visual direction was approved on 2026-09-17.
+  **Quiet-delight pass, local, 2026-09-17:** [review 04](screenshots/review-04/README.md)
+  restores the final porch icon on welcome; adds accepted-reaction feedback,
+  short control feedback, local name/status previews, full-image media tiles
+  and honest Star confirmations. Existing chimes share a soft sound family;
+  listener preferences and quiet defaults are unchanged. Offline listening
+  samples accompany the screenshots. Frontend typecheck/build, 439 unit tests,
+  97 Chromium browser cases, rules/version/whitespace checks pass. Matt approved
+  the direction for v0.2.0 on 2026-09-17. The full local gate was rerun during
+  release preparation and passes. No protocol change or new dependency.
+  Native acceptance, listening
+  and the existing multi-network voice checks remain open.
 
 - ⬜ **T-910 · Measure the release's size and running cost** — effort: **medium**
   Record installer size, cold launch time, total process memory and idle CPU
@@ -1508,7 +1544,8 @@ in a real room. [Evidence](docs/desktop-check-results.md).
    it was set, in colour, in that face.
 5. Turn on **normalize everyone** on the second machine. Every name should go
    plain immediately, including in the stream.
-6. Switch **density** to compact, then to IRC. Effects should switch off.
+6. Enable the desktop's reduced-motion preference. Shimmer should stop and
+   glow should disappear. Density modes were removed on 2026-09-17.
 7. Wait until after 7pm local time (or change the clock) and check the
    background goes slightly warmer, and that names are still readable.
 

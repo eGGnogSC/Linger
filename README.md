@@ -77,6 +77,12 @@ These terms are used everywhere — UI, code, docs, error messages:
   occupancy. Personal entrance sounds are planned and deferred
 - 👥 **A roster-forward layout** — people are the primary surface, not a gutter; each
   friend is a card showing presence, the room they are in, and their status
+- 🔎 **Readable Console controls** — larger text, 100–200% interface scaling,
+  resizable side panels and a Settings gear beside your name. Server management
+  stays separate from everyday member actions. No avatars, badges or unread counts.
+  One comfortable layout; no density modes. Narrow windows put the right panel
+  behind **People** and, when needed, the left panel behind **Navigation**.
+  Dark, light and system themes remain.
 - 🔕 **No unread counts** — a "you left off here" line and a subtle label-weight change,
   never a badge; notifications are for direct mentions and people you choose to follow
 - ✍️ **Styled names** (the AIM feature) — curated fonts, a named 16-color palette,
@@ -93,14 +99,15 @@ These terms are used everywhere — UI, code, docs, error messages:
 - 🖥️ **Desktop client** for Linux and Windows (Tauri 2, not Electron).
   macOS builds from source; published Mac installers are deferred
 - 🏘️ **Several servers at once** — a list in the rail with a live dot each, and
-  `+ add` to join another. Each one is its own sign-in, its own people and its own
+  a `+` button to join another. Each one is its own sign-in, its own people and its own
   rooms; signing out of one leaves the rest alone
 - 📦 **Full export** — any member can export public rooms and their own DMs,
   including shared files, without host approval
 - 💬 **DMs and group DMs** — private to their participants within the server;
   people outside a DM cannot find it through messages, media, search or export
 - 🎙️ **Voice rooms** — join, mute, deafen, shared mic/deafen state, push-to-talk, per-person volume and device
-  selection. A host can run a relay for different networks. **Experimental:
+  selection. Controls remain reachable while browsing Settings or another room.
+  A host can run a relay for different networks. **Experimental:
   the tests across separate computers and networks are still open**
 - 🚪 **Knock** *(the first piece of V2, built)* — nudge one person from their card in
   the roster. They get a soft knock and a card that fades on its own: no message, no
@@ -165,6 +172,12 @@ Grab the installer for your platform from
 Windows are built; **macOS is not built yet**, so on a Mac you build from a
 checkout (see Development below).
 
+The app and installer display name is **Linger**. Linux download filenames are
+case-sensitive; use the exact downloaded name, including its capital `L` on
+newer builds. Technical commands and app identifiers remain unchanged.
+The MSI upgrade code is pinned to its original value so this capitalization
+change does not create a separate Windows application.
+
 **Windows will warn you.** You get *"Windows protected your PC"*, and *Run
 anyway* is hidden behind the *More info* link. That is SmartScreen saying the
 installer is not code-signed, which is true — see
@@ -172,7 +185,7 @@ installer is not code-signed, which is true — see
 for the difference between that and the signature on updates, which is in place.
 Nothing about the download is broken.
 
-The app offers updates under *settings → this computer → updates* and
+The app offers updates under *Settings → Account & app → updates* and
 downloads nothing until you choose *install and restart*. A code push is not
 a published desktop release. See the [update instructions](docs/user-guide.md#updates)
 for the manual fallback; the full real-machine updater check (HC-1) is still open.
@@ -214,10 +227,10 @@ shared secret and firewall ports, then start with
 `docker compose --profile voice ps -a`: `coturn` must stay **Up**, not
 `Restarting` or `Exited`. Starting text chat alone does not start the relay.
 
-Everything else is inside the app. As host you get `+ room` and `manage` on the
-rail, which open one panel for rooms, invites, people, and the server's own name
-and accent. Nobody else sees those controls. None of it needs `curl` and none of
-it is a config file.
+Everything else is inside the app. As host you get a `+` beside **Rooms** and
+an **⋯** menu beside the selected server. That menu opens server settings,
+invites, rooms and member management. Nobody else sees those controls. None of
+it needs `curl` and none of it is a config file.
 
 What hosts actually change, all in `compose.yaml`:
 
@@ -250,6 +263,7 @@ client/                   Tauri 2 shell + React/TypeScript frontend
 deploy/                   Dockerfile, compose, Caddyfile
 docs/                     host-guide.md, user-guide.md, decisions.md and
                           screenshots; docs/tasks/ archives closed milestones
+screenshots/              current Console review images and their capture notes
 assets/fonts/             the twelve bundled faces, vendored rather than
                           fetched — no CDN and no remote font URL, ever, because
                           a remote face is a fingerprinting vector and somebody
@@ -283,9 +297,9 @@ Use `python3 scripts/app-icons.py --check` to verify the committed files without
 changing them. The [desktop icon audit](docs/app-icon-checks.md) explains the
 package checks and remaining visual checks. Packaging changes run an unsigned
 Linux/Windows test build; these artifacts do not ship an update. Published
-v0.1.0 predates the porch artwork, so it still has the previous icon.
+v0.2.0 includes the porch icon; older v0.1.0 downloads have the previous icon.
 
-Linux builds from this tree also accept `LINGER_LINUX_BACKEND=wayland` (opt-in)
+Linux v0.2.0 builds also accept `LINGER_LINUX_BACKEND=wayland` (opt-in)
 or `x11` (fallback) before GTK starts. This survives the AppImage launcher's
 forced X11 setting without modifying the package. The published v0.1.0 does
 not support it. See [Linux input checks](docs/linux-input-checks.md) before
@@ -311,8 +325,9 @@ in CI. Separate checks need additional services or browser engines:
   opening host ports or using your server data. CI runs this too; it does not
   replace the voice checks on separate networks.
 - In `client`, run `pnpm exec playwright install --with-deps chromium webkit`
-  once, then `pnpm test:browser` for image-preview layout, keyboard checks and
-  file-download and temporary knock feedback. Download tests simulate browser
+  once, then `pnpm test:browser` for Console layout, panel resizing, interface
+  scaling, keyboard use, voice controls, image previews, file downloads and
+  temporary knock feedback. Download tests simulate browser
   handoff success and refusal; installed-app downloads still need a real
   desktop check.
   Composer tests also cover ordinary typing and Unicode/multiline insertion;
@@ -327,6 +342,21 @@ in CI. Separate checks need additional services or browser engines:
   access for system libraries on supported Linux distributions. To use an
   existing Chromium without installing browsers, run
   `LINGER_CHROMIUM_PATH=/usr/bin/chromium pnpm test:browser --project=chromium`.
+- To refresh the [Console screenshots](screenshots/README.md), run
+  `node scripts/console-screenshots.mjs` from `client`. It starts and stops its
+  own local preview and writes to the root `screenshots/` directory. Set
+  `LINGER_CHROMIUM_PATH=/usr/bin/chromium` to use an existing browser. These
+  captures use the real UI with fictional people and local test responses,
+  not saved accounts or a live server. They do not validate a packaged app.
+  Pass an output folder to retain earlier reviews, for example
+  `node scripts/console-screenshots.mjs ../screenshots/review-04`. The capture
+  also writes `sounds/index.html` and playable WAV samples of the notification
+  cues. Open that page to listen; it never autoplays. Samples are rendered
+  locally from the app's synthesizer, not downloaded sound assets.
+- The [control style guide](docs/style-guide.md) records the approved Console
+  controls and their usage. Run `pnpm dev` from `client`
+  and open `http://localhost:1420/tests/fixtures/styleguide.html` to try its
+  shared buttons and switches in both themes.
 
 For a **documentation-only** change, run `scripts/lint-rules.sh` and
 `scripts/version-check.sh`. CI still runs those quick checks, but skips the

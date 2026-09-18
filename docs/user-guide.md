@@ -41,11 +41,13 @@ There are no macOS or ARM desktop installers yet.
 
 An AppImage is the app itself, not an installer. Open a terminal on **your own
 computer**, paste these two lines, and press Enter. This example uses version
-`0.1.0` saved in `Downloads`; substitute your actual filename if it differs.
+`0.2.0` saved in `Downloads`; substitute your actual filename if it differs.
+Filenames are case-sensitive on Linux. Older downloads start with `linger`;
+newer builds may start with `Linger`. Match the name in Downloads exactly.
 
 ```bash
-chmod +x ~/Downloads/linger_0.1.0_amd64.AppImage
-~/Downloads/linger_0.1.0_amd64.AppImage
+chmod +x ~/Downloads/Linger_0.2.0_amd64.AppImage
+~/Downloads/Linger_0.2.0_amd64.AppImage
 ```
 
 The first line allows it to run; the second opens the window. **Keep the
@@ -64,19 +66,19 @@ Replace the example filename with the one you downloaded.
 Ubuntu / Debian / Mint:
 
 ```bash
-sudo apt install ~/Downloads/linger_0.1.0_amd64.deb
+sudo apt install ~/Downloads/Linger_0.2.0_amd64.deb
 ```
 
 Fedora:
 
 ```bash
-sudo dnf install ~/Downloads/linger-0.1.0-1.x86_64.rpm
+sudo dnf install ~/Downloads/Linger-0.2.0-1.x86_64.rpm
 ```
 
 openSUSE:
 
 ```bash
-sudo zypper install ~/Downloads/linger-0.1.0-1.x86_64.rpm
+sudo zypper install ~/Downloads/Linger-0.2.0-1.x86_64.rpm
 ```
 
 Open **Linger** from your application launcher, now and whenever you want to
@@ -132,7 +134,7 @@ see [AppImage's FUSE instructions](https://docs.appimage.org/user-guide/troubles
 command, with your downloaded filename:
 
 ```bash
-WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 ~/Downloads/linger_0.1.0_amd64.AppImage
+WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 ~/Downloads/Linger_0.2.0_amd64.AppImage
 ```
 
 This opened Linger on the tested Omarchy/Wayland computer. It changes only
@@ -171,9 +173,9 @@ Do not edit the extracted AppImage or change global graphics settings to fix
 this. The packaging limitation and developer reproduction are tracked in
 [Linux input checks](linux-input-checks.md).
 
-**Testing a newer build on Wayland:** builds containing the T-929 fix accept
-`LINGER_LINUX_BACKEND=wayland` before the AppImage command. The currently
-published **v0.1.0 does not support this option**; use the clipboard workaround
+**Testing v0.2.0 on Wayland:** this version accepts
+`LINGER_LINUX_BACKEND=wayland` before the AppImage command. The older
+**v0.1.0 does not support this option**; use the clipboard workaround
 above with that version. The developer check page records the test commands
 and graphics limits. Native Wayland is opt-in; no desktop-wide setting needs
 to change.
@@ -188,21 +190,33 @@ Three parts.
   server. A room shows who is in it.
 - **The stream**, in the middle: the conversation, and the box you type in.
 - **The roster**, on the right: everyone on the server and what they are up to.
-  On a narrow window it moves to a strip above the box you type in.
+  On a narrow window, click **People** to open it. If the window cannot fit the
+  left panel either, **Navigation** opens your servers, rooms and settings.
+  Widening the window brings the side panels back automatically.
 
 ## Settings, and where they are
 
-The cog at the bottom right of the window opens settings; so does **settings**
-next to *SERVER* in the left rail. The panel has four tabs along the top:
+Click the **Settings gear** beside your name at the bottom of the left panel. The panel
+has four sections:
 
-- **you** — your display name, how your name looks, your password
-- **reading** — density, theme, evening warmth, normalizing other people's names
-- **sound & voice** — notification chimes and quiet hours; microphone, speakers,
+- **Profile** — your display name, name styling and status
+- **Appearance** — interface size, theme, evening warmth and name styling preferences
+- **Sound & voice** — notification chimes and quiet hours; microphone, speakers,
   push to talk
-- **this computer** — take everything with you, updates, sign out
+- **Account & app** — password, export, updates and sign out
 
 Everything this guide calls *settings → something* is on one of those. **Close**
 at the top right puts the room back.
+
+**Too small?** Open **Appearance → Interface size** and choose a larger scale,
+up to 200%. Your saved choice applies throughout the app, including sign-in.
+Drag a side panel's inner edge to change its width. Double-click the edge to
+reset it. With a keyboard, Tab to the edge and use Left/Right; Home/End choose
+the smallest/largest width. These choices are saved only on this computer.
+
+Hosts have a **⋯** menu beside the selected server. Use **⋯ → Manage members** for
+member removal and re-admission; ordinary member cards are for chatting and
+knocking, not managing access.
 
 ## Saying things
 
@@ -254,7 +268,7 @@ successful save. Treat download links as private, especially for DM files.
 Voice happens in a room, not in a call. There is nothing to ring and nobody to
 invite: you are already in the room, and **join voice** under the room's name
 turns your microphone on there. The line under the header then says who is in
-voice, and a name comes up to full weight while that person is talking.
+voice. Names stay readable; a small rule marks who is speaking.
 
 While you are in:
 
@@ -266,20 +280,27 @@ While you are in:
 - Names show **muted** or **deafened** when that person shares their state.
   **mic state unknown** means their client or the server needs an update.
   An unmuted microphone is not a guarantee somebody is listening.
-- The small slider beside each name is **how loud they are for you**. It never
-  leaves your computer.
+- Click a voice participant's name to adjust **how loud they are for you**.
+  Right-click or keyboard activation works too. This never leaves your computer.
+- The **chevron beside Voice** collapses the participant strip without hiding
+  your voice controls. It does not hide the People sidebar.
 - **leave voice** turns the microphone off. Closing the app does too.
+
+Opening Settings, Media or another room does not end voice. A small strip keeps
+your voice controls visible and names the room; click its name to return.
 
 Moving voice to another room keeps your mute/deafen choices. Leaving and
 joining starts a fresh session. Your per-person volume settings are unaffected
 by deafen, and missed speech is discarded rather than played when you return.
 
-**Push to talk** is in settings → voice. With it on, every call starts muted and
-the microphone is open only while you hold `ctrl`. It is off by default because
+**Push to talk** is in Settings → Sound & voice. With it on, every call starts muted and
+the microphone is open only while you hold `ctrl`, including in Settings.
+Leaving the room view or switching away from the app releases a held key;
+press it again to speak. It is off by default because
 a room you leave running is the point, and a key you have to hold is the
 opposite of that.
 
-Which microphone and speakers to use is also in settings → voice. A change
+Which microphone and speakers to use is also in Settings → Sound & voice. A change
 applies the next time you join. If a device you picked is not plugged in, the
 system default is used and the picker says so.
 
@@ -318,12 +339,14 @@ first, and you can narrow to a room or a person. Pressing a result takes you to
 that message in its room, however far back it is, with a **back to the newest**
 link in the header to come home again.
 
-Open **media** from the rail. It is everything ever shared on the server —
-pictures, video, audio, files and links — newest first, filterable by type and
+Open **Media** from the rail. It collects things shared in conversations you
+can access — pictures, video, audio, files and links — newest first, filterable by type and
 by person. Every item links back to the moment it was posted.
 
 The star does two jobs: it sorts things to the top, and it stops a file from
-ever being cleaned up. Star the good ones.
+expiring automatically. Choose **Star** to keep a file; Linger confirms when
+the server accepts it. Images keep their full shape in the collection. Click
+an item to return to its conversation.
 
 ## What the roster is telling you
 
@@ -335,20 +358,25 @@ Next to each person:
 - **away** — they set an away message on purpose
 - **offline** — the app is closed
 
-Click anybody's name to see their status card.
+Click or right-click a name in the People sidebar to open their profile and
+status. Message and Knock sit together at the bottom of that panel. Press
+Escape or click outside it to close it.
 
 ## Your status
 
-Click your own name in the roster, then *edit*. There is a line in your own
+Click your own name in the roster, then **Edit status**. There is a line in your own
 words, plus three optional fields: *reading*, *listening to*, *working on*. You
 can put one image on it.
+
+Open **Preview your status** to check the draft. Other people see the change
+only when you press **save**.
 
 There is also an **away message**. Setting one is what makes you away, and it
 shows instead of your status. Clearing it brings you back.
 
 ## Making your name yours
 
-**Settings → how your name looks.** This is the fun part, and it is what everyone
+**Settings → Profile → Make yourself at home.** This is the fun part, and it is what everyone
 else sees next to everything you write.
 
 - a **face** (one of twelve fonts) and a **weight**, plus italic
@@ -359,12 +387,15 @@ else sees next to everything you write.
 The sixteen colors are the same for everybody, and every one of them is readable
 on every background. You cannot pick something nobody can read.
 
+The sample message previews your choices without posting anything. **Reset
+changes** returns to your saved look; **Save your look** publishes it.
+
 ## Making it comfortable to read
 
 Also in settings:
 
-- **Density** — how tightly the stream is packed. *Comfortable* is the default;
-  *IRC* is one line per message.
+- **Interface size** — enlarge text and controls from 100% to 200%. The default
+  layout is comfortable; there are no density modes to choose between.
 - **Theme** — dark, light, or follow your desktop.
 - **Evening warmth** — after about 7pm the colors go slightly warmer, the way a
   room does when the lamps come on. It is subtle. You can switch it off.
@@ -374,14 +405,14 @@ Also in settings:
 ## Being interrupted, or not
 
 Desktop banners appear for **somebody naming you** — or a
-person you have specifically asked to hear about. The **notifications** button at the
-top of the roster is where you tick those people, either everywhere or in
-chosen rooms.
+person you have specifically asked to hear about. Open **Settings → Sound &
+voice → Desktop notifications** to choose those people, either everywhere or
+in selected rooms.
 
 For chimes, open **settings → sound & voice**. Voice-session joins, leaves and
 moves, mute/deafen changes, DMs and knocks have sounds by default. Ordinary
-room-message sounds start off. Turn each category on or off, preview its
-sound, or use **mute all notification sounds**. Quiet hours silence chimes
+room-message sounds start off. Turn each category on or off, choose **Listen**
+to preview its sound, or use **Mute all notification sounds**. Quiet hours silence chimes
 between 22:00 and 08:00 on your computer's clock by default.
 
 Messages you are already reading, your own messages, reconnect replay and
@@ -405,7 +436,7 @@ index listing who shared what and when. It opens with an ordinary text editor
 and an ordinary file browser. **You do not need Linger, or an account, or the
 server to still exist**, which is the entire point.
 
-**Settings → take everything with you.** Press the button, wait — it takes a
+**Settings → Account & app → take everything with you.** Press the button, wait — it takes a
 moment on a busy server — then press *download it*. The file opens in your
 normal browser's downloads, like anything else you download.
 
@@ -414,7 +445,7 @@ you can come back.
 
 ## Updates
 
-1. Open **settings → this computer → updates**.
+1. Open **Settings → Account & app → updates**.
 2. Press **check again**. The panel shows your version and whether a newer
    release is available.
 3. When you are ready to close the app, choose **install and restart** if
@@ -435,10 +466,10 @@ is still open ([HC-1](../TASKS.md#hc-1--cut-a-release-and-watch-a-machine-update
 
 ## Signing out
 
-**Settings → this computer → sign out.** That forgets the server on this
+**Settings → Account & app → sign out.** That forgets the server on this
 computer. Your account and everything in it stays exactly where it is.
 
-To change your password, use **settings → password**. If you have forgotten it,
+To change your password, use **Settings → Account & app → password**. If you have forgotten it,
 ask whoever runs the server — they can set you a new one.
 
 ---

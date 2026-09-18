@@ -20,6 +20,8 @@ import { useState } from "react";
 import type { AuthResponse } from "../generated/AuthResponse";
 import { ApiError, PublicApi } from "../lib/api";
 import { hostOf, parsePastedLink } from "../lib/link";
+import Button from "../lib/Button";
+import PorchMark from "../lib/PorchMark";
 import "./auth.css";
 
 /**
@@ -33,7 +35,12 @@ const MIN_PASSWORD_CHARS = 8;
 type Step =
   | { name: "connect" }
   | { name: "login"; baseUrl: string; serverName: string | null }
-  | { name: "register"; baseUrl: string; code: string; serverName: string | null }
+  | {
+      name: "register";
+      baseUrl: string;
+      code: string;
+      serverName: string | null;
+    }
   | { name: "setup"; baseUrl: string; token: string };
 
 interface Props {
@@ -65,8 +72,8 @@ export default function AuthScreens({
       <div className="auth-panel">
         {inline ? null : (
           <header className="auth-head">
-            <h1 className="auth-wordmark">linger</h1>
-            <p className="auth-tagline meta">a small server for people who like each other</p>
+            <h1 className="sr-only">Linger</h1>
+            <PorchMark className="auth-logo" />
           </header>
         )}
 
@@ -78,7 +85,11 @@ export default function AuthScreens({
 
         {step.name === "connect" ? <Connect onStep={setStep} /> : null}
         {step.name === "login" ? (
-          <Login step={step} onBack={() => setStep({ name: "connect" })} onDone={onAuthenticated} />
+          <Login
+            step={step}
+            onBack={() => setStep({ name: "connect" })}
+            onDone={onAuthenticated}
+          />
         ) : null}
         {step.name === "register" ? (
           <Register
@@ -88,7 +99,11 @@ export default function AuthScreens({
           />
         ) : null}
         {step.name === "setup" ? (
-          <Setup step={step} onBack={() => setStep({ name: "connect" })} onDone={onAuthenticated} />
+          <Setup
+            step={step}
+            onBack={() => setStep({ name: "connect" })}
+            onDone={onAuthenticated}
+          />
         ) : null}
 
         {keyringNotice ? (
@@ -120,7 +135,9 @@ function Connect({ onStep }: { onStep: (step: Step) => void }) {
       if (link.kind === "setup") {
         const preview = await api.setupPreview(link.token);
         if (!preview.valid) {
-          setError("That setup link has already been used. Restart the server for a new one.");
+          setError(
+            "That setup link has already been used. Restart the server for a new one.",
+          );
           return;
         }
         onStep({ name: "setup", baseUrl: link.baseUrl, token: link.token });
@@ -151,18 +168,34 @@ function Connect({ onStep }: { onStep: (step: Step) => void }) {
 
   return (
     <form className="auth-form" onSubmit={submit}>
+      <div className="auth-intro">
+        <h2>Join your people.</h2>
+        <p>Your invite is the way in.</p>
+      </div>
       <Field
         label="server or link"
-        hint="Paste an invite link, a setup link, or just the address."
+        hint="Paste an invite to join, or a server address to sign in."
         value={pasted}
         onChange={setPasted}
         placeholder="linger.example"
         autoFocus
       />
       <Problem message={error} />
-      <button className="auth-go" type="submit" disabled={busy || pasted.trim() === ""}>
-        {busy ? "checking…" : "continue"}
-      </button>
+      <Button
+        variant="primary"
+        icon="arrow"
+        className="auth-go"
+        type="submit"
+        disabled={busy || pasted.trim() === ""}
+      >
+        {busy ? "Checking…" : "Continue"}
+      </Button>
+      <details className="auth-help">
+        <summary>Setting up a new server?</summary>
+        <p>
+          Paste the full setup link from your server logs, including its token.
+        </p>
+      </details>
     </form>
   );
 }
@@ -199,11 +232,29 @@ function Login({
 
   return (
     <form className="auth-form" onSubmit={submit}>
-      <Where baseUrl={step.baseUrl} serverName={step.serverName} onBack={onBack} />
-      <Field label="username" value={username} onChange={setUsername} autoFocus />
-      <Field label="password" value={password} onChange={setPassword} type="password" />
+      <Where
+        baseUrl={step.baseUrl}
+        serverName={step.serverName}
+        onBack={onBack}
+      />
+      <Field
+        label="username"
+        value={username}
+        onChange={setUsername}
+        autoFocus
+      />
+      <Field
+        label="password"
+        value={password}
+        onChange={setPassword}
+        type="password"
+      />
       <Problem message={error} />
-      <button className="auth-go" type="submit" disabled={busy || !username || !password}>
+      <button
+        className="auth-go"
+        type="submit"
+        disabled={busy || !username || !password}
+      >
         {busy ? "signing in…" : "sign in"}
       </button>
     </form>
@@ -245,10 +296,15 @@ function Register({
 
   return (
     <form className="auth-form" onSubmit={submit}>
-      <Where baseUrl={step.baseUrl} serverName={step.serverName} onBack={onBack} />
+      <Where
+        baseUrl={step.baseUrl}
+        serverName={step.serverName}
+        onBack={onBack}
+      />
       <p className="auth-lead">
-        You're joining {step.serverName ?? hostOf(step.baseUrl)}. Pick a username
-        people can mention you by, and a display name they'll see in the roster.
+        You're joining {step.serverName ?? hostOf(step.baseUrl)}. Pick a
+        username people can mention you by, and a display name they'll see in
+        the roster.
       </p>
       <Field
         label="username"
@@ -257,7 +313,11 @@ function Register({
         onChange={setUsername}
         autoFocus
       />
-      <Field label="display name" value={displayName} onChange={setDisplayName} />
+      <Field
+        label="display name"
+        value={displayName}
+        onChange={setDisplayName}
+      />
       <Field
         label="password"
         hint={`At least ${MIN_PASSWORD_CHARS} characters. No silly rules about symbols.`}
@@ -269,7 +329,12 @@ function Register({
       <button
         className="auth-go"
         type="submit"
-        disabled={busy || !username || !displayName || password.length < MIN_PASSWORD_CHARS}
+        disabled={
+          busy ||
+          !username ||
+          !displayName ||
+          password.length < MIN_PASSWORD_CHARS
+        }
       >
         {busy ? "joining…" : "join"}
       </button>
@@ -316,7 +381,8 @@ function Setup({
     <form className="auth-form" onSubmit={submit}>
       <Where baseUrl={step.baseUrl} serverName={null} onBack={onBack} />
       <p className="auth-lead">
-        Nobody has set this server up yet. Whoever does becomes its host — that's you.
+        Nobody has set this server up yet. Whoever does becomes its host —
+        that's you.
       </p>
       <Field
         label="server name"
@@ -326,7 +392,11 @@ function Setup({
         autoFocus
       />
       <Field label="username" value={username} onChange={setUsername} />
-      <Field label="display name" value={displayName} onChange={setDisplayName} />
+      <Field
+        label="display name"
+        value={displayName}
+        onChange={setDisplayName}
+      />
       <Field
         label="password"
         hint={`At least ${MIN_PASSWORD_CHARS} characters.`}
@@ -338,7 +408,13 @@ function Setup({
       <button
         className="auth-go"
         type="submit"
-        disabled={busy || !serverName || !username || !displayName || password.length < MIN_PASSWORD_CHARS}
+        disabled={
+          busy ||
+          !serverName ||
+          !username ||
+          !displayName ||
+          password.length < MIN_PASSWORD_CHARS
+        }
       >
         {busy ? "setting up…" : "set up this server"}
       </button>

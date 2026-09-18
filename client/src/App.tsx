@@ -3,9 +3,7 @@
  *
  * The frame is [rail | stream | roster] over a permanent status bar, and the
  * roster is the point of it (SPEC §3): people get the right-hand panel, not a
- * gutter. On a window too narrow for three columns the roster moves into the
- * stream column as a horizontal strip above the composer — it is never hidden
- * and it never becomes a menu, so `Stream` takes it as a slot.
+ * gutter. Narrow windows keep the same cards behind the People button.
  *
  * The rail starts with the server list (SPEC §3, T-412): a live dot per server,
  * a mark when one is holding something you have not read, and `+ add` for the
@@ -14,14 +12,14 @@
  * the roster and your presence with it — you are only ever standing in one room.
  *
  * Below that, the rail is where the host's own controls hang: `+ room` beside
- * the room list and `manage` beside the server's name. They are *absent* for
+ * the room list and server options beside the selected server. They are *absent* for
  * everybody else rather than greyed out — a disabled control is a permission
  * matrix drawn in CSS, and this product refuses to have one. Host or member is
  * decided per server: you can host one and be a guest on the next.
  *
- * `you` is the other door: display name, password, density, sign out. It is
+ * `Settings` is the other door: profile, appearance, sound, account. It is
  * drawn for everybody, because those are yours, not the host's. The panel
- * takes the stream column the same way `manage` does (T-411).
+ * takes the stream column the same way Host tools does (T-411).
  *
  * The rail is where SPEC §4.2's other half lives: a room holding something you
  * have not seen changes *weight*, and nothing else. No number, no dot, no
@@ -41,8 +39,6 @@ import type { MessageId } from "./generated/MessageId";
 import MediaPanel from "./media/MediaPanel";
 import { storageDetail, storageLine } from "./media/media";
 import { useNow } from "./lib/clock";
-import { CogIcon } from "./lib/icons";
-import { applyDensity, type Density, loadDensity } from "./lib/density";
 import { applyNormalize, loadNormalize } from "./lib/normalize";
 import {
   applyTheme,
@@ -68,19 +64,42 @@ import {
   useServers,
 } from "./lib/gateway";
 import { dmLabel, noDms, orderDms } from "./dm/dm";
-import { useNarrow } from "./lib/layout";
+import { frameLayout, useWindowWidth } from "./lib/layout";
+import {
+  applyInterfaceScale,
+  loadPanel,
+  savePanel,
+  useInterfaceScale,
+} from "./lib/interface";
+import PanelResize from "./lib/PanelResize";
+import AdaptivePanel from "./lib/AdaptivePanel";
 import { hostOf } from "./lib/link";
 import { personStyle } from "./lib/names";
 import { occupancyLine, occupantsOf, STACK_VISIBLE } from "./lib/occupancy";
 import { colorVar } from "./lib/palette";
 import { type ServerSession, useSessions } from "./lib/session";
-import { dropPresence, setPresenceLive, setPresenceRoom, startPresence } from "./lib/watchPresence";
+import {
+  dropPresence,
+  setPresenceLive,
+  setPresenceRoom,
+  startPresence,
+} from "./lib/watchPresence";
 import { forgetPreviews } from "./lib/previews";
 import { checkForUpdate } from "./lib/updates";
-import { forgetNotifications, resetNotifications, setViewing } from "./notify/notify";
+import {
+  forgetNotifications,
+  resetNotifications,
+  setViewing,
+} from "./notify/notify";
 import RosterPanel from "./roster/RosterPanel";
 import SearchPanel from "./search/SearchPanel";
 import Stream from "./stream/Stream";
+import VoiceAway from "./voice/VoiceAway";
+import { ActionIcon, CogIcon } from "./lib/icons";
+import IconButton from "./lib/IconButton";
+import ContextPanel from "./lib/ContextPanel";
+import EmptyState from "./lib/EmptyState";
+import Button from "./lib/Button";
 import "./app.css";
 
 /**
@@ -189,7 +208,7 @@ function ServerLink({
   return null;
 }
 
-function Console({
+export function Console({
   servers,
   keyringNotice,
   onSignOut,
@@ -209,13 +228,12 @@ function Console({
   // Which room you were reading on each server, so switching back returns you
   // to where you were rather than to the top of its list.
   const [openRoomIds, setOpenRoomIds] = useState<Record<string, RoomId>>({});
-  const [density, setDensity] = useState<Density>(loadDensity);
   // "Normalize everyone" (SPEC §4.5): the reader's answer to other people's
-  // name styling. It is one attribute on `<html>`, so it lives beside density
+  // name styling. It is one attribute on `<html>`, so it lives with other display preferences
   // rather than anywhere near the components that draw a name.
   const [normalize, setNormalize] = useState<boolean>(loadNormalize);
   // Theme and the post-sunset warmth (SPEC §4.7, §5.3). Both are the reader's
-  // own and both are one attribute on `<html>`, so they sit here with density.
+  // own and both are one attribute on `<html>`, so they sit here together.
   const [theme, setTheme] = useState<ThemePref>(loadTheme);
   const [warmth, setWarmth] = useState<boolean>(loadWarmth);
   // Slow on purpose: this is the clock that lets dusk arrive without a reload,
@@ -245,11 +263,22 @@ function Console({
   // status bar and nothing else: no dialog, no nag, no automatic restart. The
   // panel is where you decide, and it is also where the check runs again.
   const [updateWaiting, setUpdateWaiting] = useState(false);
-  const narrow = useNarrow();
+  const scale = useInterfaceScale();
+  const width = useWindowWidth();
+  const [railWidth, setRailWidth] = useState(() => loadPanel("rail"));
+  const [rosterWidth, setRosterWidth] = useState(() => loadPanel("roster"));
+  const layout = frameLayout(width, scale, railWidth, rosterWidth);
+  const { narrow, stacked } = layout;
+  const [drawer, setDrawer] = useState<"rail" | "roster" | null>(null);
+  useEffect(() => setDrawer(null), [narrow, stacked]);
+  useEffect(applyInterfaceScale, [scale]);
+  useEffect(() => savePanel("rail", railWidth), [railWidth]);
+  useEffect(() => savePanel("roster", rosterWidth), [rosterWidth]);
 
   // A server that has gone — signed out of, or refused — must not leave the
   // frame pointing at nothing.
-  const active = servers.find((server) => server.baseUrl === activeUrl) ?? servers[0];
+  const active =
+    servers.find((server) => server.baseUrl === activeUrl) ?? servers[0];
   const api = active.api;
   const server = info[active.baseUrl] ?? null;
   const gateway = useGateway(active.baseUrl);
@@ -258,6 +287,7 @@ function Console({
   // Every setter React hands back is stable, so the empty dependency list is
   // the truth rather than a shortcut.
   const closePanels = useCallback((): void => {
+    setDrawer(null);
     setHostSection(null);
     setSettingsOpen(false);
     setAddingServer(false);
@@ -277,6 +307,16 @@ function Console({
     closePanels();
     setSettingsOpen(true);
   };
+  const closeSettings = (): void => {
+    setSettingsOpen(false);
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLButtonElement>(
+          stacked ? ".navigation-access" : ".rail-settings",
+        )
+        ?.focus(),
+    );
+  };
   const openHost = (section: HostSection): void => {
     closePanels();
     setHostSection(section);
@@ -289,17 +329,20 @@ function Console({
   // Stable, because the stream holds it in an effect's dependency list.
   const forgetJump = useCallback(() => setJumpTo(null), []);
 
-  const noteInfo = useCallback((baseUrl: string, next: ServerInfo | null): void => {
-    setInfo((held) => {
-      if (next === null) {
-        if (!(baseUrl in held)) return held;
-        const without = { ...held };
-        delete without[baseUrl];
-        return without;
-      }
-      return { ...held, [baseUrl]: next };
-    });
-  }, []);
+  const noteInfo = useCallback(
+    (baseUrl: string, next: ServerInfo | null): void => {
+      setInfo((held) => {
+        if (next === null) {
+          if (!(baseUrl in held)) return held;
+          const without = { ...held };
+          delete without[baseUrl];
+          return without;
+        }
+        return { ...held, [baseUrl]: next };
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     let open = true;
@@ -332,10 +375,6 @@ function Console({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openSearch]);
-
-  useEffect(() => {
-    applyDensity(density);
-  }, [density]);
 
   useEffect(() => {
     applyNormalize(normalize);
@@ -382,13 +421,17 @@ function Console({
   // account can no longer see.
   const openable = [...rooms, ...dms];
   const open =
-    openable.find((room) => room.id === openRoomIds[active.baseUrl]) ?? rooms[0] ?? null;
+    openable.find((room) => room.id === openRoomIds[active.baseUrl]) ??
+    rooms[0] ??
+    null;
 
   // Nothing interrupts you about the room you are already reading, and you are
   // only ever standing in one room — switching servers takes you out of the
   // last one.
   useEffect(() => {
-    setViewing(open === null ? null : { server: active.baseUrl, roomId: open.id });
+    setViewing(
+      open === null ? null : { server: active.baseUrl, roomId: open.id },
+    );
     setPresenceRoom(active.baseUrl, open?.id ?? null);
   }, [active.baseUrl, open?.id]);
 
@@ -400,7 +443,8 @@ function Console({
   }, [active.baseUrl, gateway.status.kind]);
 
   const status = statusText(gateway.status);
-  const statusDetail = gateway.status.kind === "waiting" ? gateway.status.reason : undefined;
+  const statusDetail =
+    gateway.status.kind === "waiting" ? gateway.status.reason : undefined;
 
   // One roster, in one of two places. Rendering it twice and hiding one would
   // mean two of everything it holds — two open cards, two scroll positions.
@@ -424,14 +468,7 @@ function Console({
     [api, closePanels],
   );
 
-  const roster = (
-    <RosterPanel
-      api={api}
-      rooms={rooms}
-      layout={narrow ? "strip" : "column"}
-      onOpenDm={openDm}
-    />
-  );
+  const roster = <RosterPanel api={api} onOpenDm={openDm} />;
 
   // `ready` is the fresher answer about who we are; the stored session is what
   // we have before it arrives. Neither is the lock — every host endpoint checks
@@ -442,6 +479,12 @@ function Console({
   // until it arrives. The status bar and settings both prefer the live one so
   // a display-name save shows up without a reload.
   const you = gateway.me ?? active.user;
+  const conversationVisible =
+    !addingServer &&
+    !settingsOpen &&
+    !mediaOpen &&
+    !searchOpen &&
+    host === null;
 
   // The server's accent, if the host picked one (SPEC §5.3, `PATCH /server`).
   // It names a palette key, and the variable that key points at is generated
@@ -449,313 +492,394 @@ function Console({
   // built-in accent and this line quietly does nothing.
   const frameStyle: CSSProperties = {
     "--accent": colorVar(server?.accent_key ?? "", "var(--accent-default)"),
+    "--rail-w": `${layout.rail / 16}rem`,
+    "--roster-w": `${layout.roster / 16}rem`,
   };
 
   return (
-    <div className="frame" data-narrow={narrow ? "true" : undefined} style={frameStyle}>
+    <div
+      className="frame"
+      data-narrow={narrow ? "true" : undefined}
+      data-stacked={stacked ? "true" : undefined}
+      style={frameStyle}
+    >
       {servers.map((session) => (
         <ServerLink key={session.baseUrl} session={session} onInfo={noteInfo} />
       ))}
 
-      <aside className="rail">
-        <section className="rail-section">
-          <div className="rail-head">
-            <h2 className="panel-label">servers</h2>
+      {narrow ? (
+        <div className="panel-access">
+          {stacked ? (
             <button
               type="button"
-              className="rail-action meta"
-              aria-pressed={addingServer}
-              onClick={() => (addingServer ? setAddingServer(false) : openAdd())}
+              className="navigation-access"
+              aria-haspopup="dialog"
+              aria-controls="rail-drawer"
+              aria-expanded={drawer === "rail"}
+              onClick={() => setDrawer("rail")}
             >
-              + add
+              Navigation
             </button>
-          </div>
-          <ul className="server-list">
-            {servers.map((session) => (
-              <li key={session.baseUrl}>
-                <ServerRow
-                  name={info[session.baseUrl]?.name ?? hostOf(session.baseUrl)}
-                  state={all[session.baseUrl]}
-                  current={session.baseUrl === active.baseUrl}
-                  onOpen={() => {
-                    setActiveUrl(session.baseUrl);
-                    closePanels();
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="rail-section">
-          <div className="rail-head">
-            <h2 className="panel-label">server</h2>
-            <div className="rail-actions">
-              {isHost ? (
-                <button
-                  type="button"
-                  className="rail-action meta"
-                  aria-pressed={host !== null}
+          ) : null}
+          <button
+            type="button"
+            className="people-access"
+            aria-haspopup="dialog"
+            aria-controls="roster-drawer"
+            aria-expanded={drawer === "roster"}
+            onClick={() => setDrawer("roster")}
+          >
+            People
+          </button>
+        </div>
+      ) : null}
+      <AdaptivePanel
+        side="rail"
+        collapsed={stacked}
+        open={drawer === "rail"}
+        onClose={() => setDrawer(null)}
+      >
+        <aside className="rail" id="navigation" aria-label="Navigation">
+          <div className="rail-content">
+            <section className="rail-section">
+              <div className="rail-head">
+                <h2 className="panel-label">servers</h2>
+                <IconButton
+                  label="Add a server"
+                  tooltipSide="below"
+                  aria-pressed={addingServer}
                   onClick={() =>
-                    host === null ? openHost("server") : setHostSection(null)
+                    addingServer ? setAddingServer(false) : openAdd()
                   }
                 >
-                  manage
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="rail-action meta"
-                aria-pressed={settingsOpen}
-                onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())}
-              >
-                settings
-              </button>
-            </div>
-          </div>
-          <p className="rail-server">{server?.name ?? hostOf(active.baseUrl)}</p>
-        </section>
-        <section className="rail-section rail-rooms">
-          <div className="rail-head">
-            <h2 className="panel-label">rooms</h2>
-            {isHost ? (
-              <button
-                type="button"
-                className="rail-action meta"
-                onClick={() => openHost("rooms")}
-              >
-                + room
-              </button>
-            ) : null}
-          </div>
-          {rooms.length === 0 ? (
-            <p className="placeholder">{noRoomsRail()}</p>
-          ) : (
-            <ul className="room-list">
-              {rooms.map((room) => (
-                <li key={room.id}>
-                  <button
-                    type="button"
-                    className="room-item"
-                    aria-current={room.id === open?.id ? "true" : undefined}
-                    // The entire "there is something here" signal (SPEC §4.2).
-                    // A boolean, on purpose: there is nothing to count and no
-                    // endpoint that would answer if there were.
-                    data-new={hasNewActivity(gateway, room.id) ? "true" : undefined}
-                    onClick={() => {
-                      setOpenRoomIds((held) => ({ ...held, [active.baseUrl]: room.id }));
-                      // You clicked a room to read it, so the host panel gets
-                      // out of the way rather than sitting over the stream.
-                      closePanels();
-                    }}
-                  >
-                    <span className="room-slug">#{room.slug}</span>
-                    <RoomStack
-                      people={occupantsOf(
-                        room.id,
-                        gateway.occupancy,
-                        gateway.presence,
-                        gateway.users,
-                      )}
+                  <ActionIcon name="plus" />
+                </IconButton>
+              </div>
+              <ul className="server-list">
+                {servers.map((session) => (
+                  <li key={session.baseUrl}>
+                    <ServerRow
+                      name={
+                        info[session.baseUrl]?.name ?? hostOf(session.baseUrl)
+                      }
+                      state={all[session.baseUrl]}
+                      current={session.baseUrl === active.baseUrl}
+                      onManage={
+                        session.baseUrl === active.baseUrl && isHost
+                          ? openHost
+                          : undefined
+                      }
+                      onOpen={() => {
+                        setActiveUrl(session.baseUrl);
+                        closePanels();
+                      }}
                     />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section className="rail-section rail-dms">
-          {/* SPEC §4.13. Under the rooms because a DM is not one of the
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section className="rail-section rail-rooms">
+              <div className="rail-head">
+                <h2 className="panel-label">rooms</h2>
+                {isHost ? (
+                  <IconButton
+                    label="Create a room"
+                    tooltipSide="below"
+                    onClick={() => openHost("rooms")}
+                  >
+                    <ActionIcon name="plus" />
+                  </IconButton>
+                ) : null}
+              </div>
+              {rooms.length === 0 ? (
+                <p className="placeholder">{noRoomsRail()}</p>
+              ) : (
+                <ul className="room-list">
+                  {rooms.map((room) => (
+                    <li key={room.id}>
+                      <button
+                        type="button"
+                        className="room-item"
+                        aria-current={
+                          conversationVisible && room.id === open?.id
+                            ? "true"
+                            : undefined
+                        }
+                        // The entire "there is something here" signal (SPEC §4.2).
+                        // A boolean, on purpose: there is nothing to count and no
+                        // endpoint that would answer if there were.
+                        data-new={
+                          hasNewActivity(gateway, room.id) ? "true" : undefined
+                        }
+                        onClick={() => {
+                          setOpenRoomIds((held) => ({
+                            ...held,
+                            [active.baseUrl]: room.id,
+                          }));
+                          // You clicked a room to read it, so the host panel gets
+                          // out of the way rather than sitting over the stream.
+                          closePanels();
+                        }}
+                      >
+                        <span className="room-slug">#{room.slug}</span>
+                        <RoomStack
+                          people={occupantsOf(
+                            room.id,
+                            gateway.occupancy,
+                            gateway.presence,
+                            gateway.users,
+                          )}
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            <section className="rail-section rail-dms">
+              {/* SPEC §4.13. Under the rooms because a DM is not one of the
               server's rooms — it is yours, and everybody's list here is
               different. A DM holding something new gets the same weight change
               a room gets and nothing else: no number, no dot, no colour, no
               matter how urgent a DM feels (AGENTS rule 3). */}
-          <div className="rail-head">
-            <h2 className="panel-label">direct</h2>
-          </div>
-          {dms.length === 0 ? (
-            <p className="placeholder">{noDms()}</p>
-          ) : (
-            <ul className="room-list">
-              {dms.map((dm) => (
-                <li key={dm.id}>
-                  <button
-                    type="button"
-                    className="room-item"
-                    aria-current={dm.id === open?.id ? "true" : undefined}
-                    data-new={hasNewActivity(gateway, dm.id) ? "true" : undefined}
-                    onClick={() => {
-                      setOpenRoomIds((held) => ({ ...held, [active.baseUrl]: dm.id }));
-                      closePanels();
-                    }}
-                  >
-                    {/* No `#`: a DM is not a channel, it is who is in it. */}
-                    <span className="room-slug">
-                      {dmLabel(dm, gateway.users, gateway.me?.id ?? null)}
-                    </span>
-                    <RoomStack
-                      people={occupantsOf(
-                        dm.id,
-                        gateway.occupancy,
-                        gateway.presence,
-                        gateway.users,
-                      )}
-                    />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section className="rail-section rail-places">
-          {/* The two destinations (SPEC §3): places that are not rooms. They
+              <div className="rail-head">
+                <h2 className="panel-label">DMs</h2>
+              </div>
+              {dms.length === 0 ? (
+                <p className="placeholder">{noDms()}</p>
+              ) : (
+                <ul className="room-list">
+                  {dms.map((dm) => (
+                    <li key={dm.id}>
+                      <button
+                        type="button"
+                        className="room-item"
+                        aria-current={
+                          conversationVisible && dm.id === open?.id
+                            ? "true"
+                            : undefined
+                        }
+                        data-new={
+                          hasNewActivity(gateway, dm.id) ? "true" : undefined
+                        }
+                        onClick={() => {
+                          setOpenRoomIds((held) => ({
+                            ...held,
+                            [active.baseUrl]: dm.id,
+                          }));
+                          closePanels();
+                        }}
+                      >
+                        {/* No `#`: a DM is not a channel, it is who is in it. */}
+                        <span className="room-slug">
+                          {dmLabel(dm, gateway.users, gateway.me?.id ?? null)}
+                        </span>
+                        <RoomStack
+                          people={occupantsOf(
+                            dm.id,
+                            gateway.occupancy,
+                            gateway.presence,
+                            gateway.users,
+                          )}
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            <section className="rail-section rail-places">
+              {/* The two destinations (SPEC §3): places that are not rooms. They
               sit under the room list and open in place of the message stream,
               so nothing in this app ever floats over the conversation.
               `media` is everything anybody has shared (SPEC §4.4); `search`
               is everything anybody said (SPEC §4.12). */}
-          <button
-            type="button"
-            className="room-item"
-            aria-pressed={mediaOpen}
-            onClick={() => (mediaOpen ? setMediaOpen(false) : openMedia())}
-          >
-            <span className="room-slug">media</span>
-          </button>
-          <button
-            type="button"
-            className="room-item"
-            aria-pressed={searchOpen}
-            onClick={() => (searchOpen ? setSearchOpen(false) : openSearch())}
-          >
-            <span className="room-slug">search</span>
-          </button>
-        </section>
-      </aside>
-
-      {addingServer ? (
-        <main className="stream">
-          <header className="stream-header">
-            <span className="room-name">add a server</span>
-            <button
-              type="button"
-              className="rail-action meta"
-              onClick={() => setAddingServer(false)}
-            >
-              close
-            </button>
-          </header>
-          <AuthScreens
-            inline
-            notice={null}
-            keyringNotice={keyringNotice}
-            onAuthenticated={async (baseUrl, auth) => {
-              await onAddServer(baseUrl, auth);
-              setActiveUrl(baseUrl);
-              setAddingServer(false);
-            }}
-          />
-        </main>
-      ) : settingsOpen ? (
-        <SettingsPanel
-          api={api}
-          user={you}
-          density={density}
-          onDensityChange={setDensity}
-          normalize={normalize}
-          onNormalizeChange={setNormalize}
-          theme={theme}
-          onThemeChange={setTheme}
-          warmth={warmth}
-          onWarmthChange={setWarmth}
-          onSignOut={() => onSignOut(active.baseUrl)}
-          onReauthenticated={(auth) => onAddServer(api.baseUrl, auth)}
-          onClose={() => setSettingsOpen(false)}
-          roster={narrow ? roster : undefined}
-          initialSection={updateWaiting ? "computer" : "you"}
-        />
-      ) : mediaOpen ? (
-        <MediaPanel
-          api={api}
-          users={gateway.users}
-          me={gateway.me?.id ?? null}
-          rooms={[...rooms, ...dms]}
-          onOpen={(roomId, messageId) => {
-            setOpenRoomIds((held) => ({ ...held, [active.baseUrl]: roomId }));
-            setJumpTo(messageId);
-            closePanels();
-          }}
-          onClose={() => setMediaOpen(false)}
-          roster={narrow ? roster : undefined}
-          expiryDays={server?.file_expiry_days}
-        />
-      ) : searchOpen ? (
-        <SearchPanel
-          api={api}
-          users={gateway.users}
-          me={gateway.me?.id ?? null}
-          // Rooms *and* your DMs: since T-1303 a member's own DMs are in their
-          // results, and a hit the panel cannot name reads as one from a room
-          // that is gone.
-          rooms={[...rooms, ...dms]}
-          focusNonce={searchFocus}
-          onOpen={(roomId, messageId) => {
-            setOpenRoomIds((held) => ({ ...held, [active.baseUrl]: roomId }));
-            setJumpTo(messageId);
-            closePanels();
-          }}
-          onClose={() => setSearchOpen(false)}
-          roster={narrow ? roster : undefined}
-        />
-      ) : host !== null ? (
-        <HostPanel
-          api={api}
-          rooms={rooms}
-          server={server}
-          section={host}
-          onSection={setHostSection}
-          onServerChange={(next) => noteInfo(active.baseUrl, next)}
-          onClose={() => setHostSection(null)}
-          roster={narrow ? roster : undefined}
-        />
-      ) : open === null ? (
-        <main className="stream">
-          <header className="stream-header">
-            <span className="room-name">
-              {gateway.status.kind === "ready" ? "no rooms yet" : "welcome"}
-            </span>
-          </header>
-          <div className="stream-body">
-            <p className="placeholder">
-              {noRoomsBody(gateway.status.kind === "ready", isHost)}
-            </p>
-            {/* The host is the one person who can fix this, so they get the
-                way out rather than a sentence about it. */}
-            {isHost && gateway.status.kind === "ready" ? (
-              <p className="placeholder">
-                <button
-                  type="button"
-                  className="rail-action meta"
-                  onClick={() => openHost("rooms")}
-                >
-                  make the first room
-                </button>
-              </p>
-            ) : null}
+              <button
+                type="button"
+                className="room-item"
+                aria-pressed={mediaOpen}
+                onClick={() => (mediaOpen ? setMediaOpen(false) : openMedia())}
+              >
+                <ActionIcon name="media" />
+                <span className="room-slug">Media</span>
+              </button>
+              <button
+                type="button"
+                className="room-item"
+                aria-pressed={searchOpen}
+                onClick={() =>
+                  searchOpen ? setSearchOpen(false) : openSearch()
+                }
+              >
+                <ActionIcon name="search" />
+                <span className="room-slug">Search</span>
+              </button>
+            </section>
           </div>
-          {narrow ? roster : null}
-        </main>
-      ) : (
-        <Stream
-          api={api}
-          room={open}
-          users={gateway.users}
-          density={density}
-          focus={jumpTo}
-          onFocused={forgetJump}
-          roster={narrow ? roster : undefined}
+          <section className="rail-account" aria-label="Your account">
+            <div className="rail-self">
+              <span className="rail-self-name">
+                {you.display_name}
+                <span className="meta">you</span>
+              </span>
+              <IconButton
+                label="Settings"
+                className="rail-settings"
+                aria-pressed={settingsOpen}
+                onClick={() =>
+                  settingsOpen ? closeSettings() : openSettings()
+                }
+              >
+                <CogIcon size={20} />
+              </IconButton>
+            </div>
+          </section>
+        </aside>
+      </AdaptivePanel>
+
+      {stacked ? null : (
+        <PanelResize
+          side="rail"
+          value={layout.rail}
+          scale={scale}
+          onChange={setRailWidth}
+        />
+      )}
+      {narrow ? null : (
+        <PanelResize
+          side="roster"
+          value={layout.roster}
+          scale={scale}
+          onChange={setRosterWidth}
         />
       )}
 
-      {narrow ? null : roster}
+      <div className="workspace">
+        {addingServer ? (
+          <main className="stream">
+            <header className="stream-header">
+              <span className="room-name">add a server</span>
+              <button
+                type="button"
+                className="rail-action meta"
+                onClick={() => setAddingServer(false)}
+              >
+                close
+              </button>
+            </header>
+            <AuthScreens
+              inline
+              notice={null}
+              keyringNotice={keyringNotice}
+              onAuthenticated={async (baseUrl, auth) => {
+                await onAddServer(baseUrl, auth);
+                setActiveUrl(baseUrl);
+                setAddingServer(false);
+              }}
+            />
+          </main>
+        ) : settingsOpen ? (
+          <SettingsPanel
+            api={api}
+            user={you}
+            normalize={normalize}
+            onNormalizeChange={setNormalize}
+            theme={theme}
+            onThemeChange={setTheme}
+            warmth={warmth}
+            onWarmthChange={setWarmth}
+            onSignOut={() => onSignOut(active.baseUrl)}
+            onReauthenticated={(auth) => onAddServer(api.baseUrl, auth)}
+            onClose={closeSettings}
+            initialSection={updateWaiting ? "computer" : "you"}
+          />
+        ) : mediaOpen ? (
+          <MediaPanel
+            api={api}
+            users={gateway.users}
+            me={gateway.me?.id ?? null}
+            rooms={[...rooms, ...dms]}
+            onOpen={(roomId, messageId) => {
+              setOpenRoomIds((held) => ({ ...held, [active.baseUrl]: roomId }));
+              setJumpTo(messageId);
+              closePanels();
+            }}
+            onClose={() => setMediaOpen(false)}
+            expiryDays={server?.file_expiry_days}
+          />
+        ) : searchOpen ? (
+          <SearchPanel
+            api={api}
+            users={gateway.users}
+            me={gateway.me?.id ?? null}
+            // Rooms *and* your DMs: since T-1303 a member's own DMs are in their
+            // results, and a hit the panel cannot name reads as one from a room
+            // that is gone.
+            rooms={[...rooms, ...dms]}
+            focusNonce={searchFocus}
+            onOpen={(roomId, messageId) => {
+              setOpenRoomIds((held) => ({ ...held, [active.baseUrl]: roomId }));
+              setJumpTo(messageId);
+              closePanels();
+            }}
+            onClose={() => setSearchOpen(false)}
+          />
+        ) : host !== null ? (
+          <HostPanel
+            api={api}
+            rooms={rooms}
+            server={server}
+            section={host}
+            onSection={setHostSection}
+            onServerChange={(next) => noteInfo(active.baseUrl, next)}
+            onClose={() => setHostSection(null)}
+          />
+        ) : open === null ? (
+          <main className="stream">
+            <header className="stream-header">
+              <span className="room-name">
+                {gateway.status.kind === "ready" ? "no rooms yet" : "welcome"}
+              </span>
+            </header>
+            <div className="stream-body">
+              {gateway.status.kind === "ready" ? (
+                <EmptyState title="A place for your people." action={isHost ? (
+                  <Button variant="primary" onClick={() => openHost("rooms")}>Make the first room</Button>
+                ) : undefined}>
+                  {noRoomsBody(true, isHost)}
+                </EmptyState>
+              ) : <p className="placeholder">{noRoomsBody(false, isHost)}</p>}
+            </div>
+          </main>
+        ) : (
+          <Stream
+            api={api}
+            room={open}
+            users={gateway.users}
+            focus={jumpTo}
+            onFocused={forgetJump}
+          />
+        )}
+        <VoiceAway
+          servers={servers}
+          visibleServer={active.baseUrl}
+          visibleRoom={conversationVisible ? (open?.id ?? null) : null}
+          onReturn={(baseUrl, roomId) => {
+            setActiveUrl(baseUrl);
+            setOpenRoomIds((held) => ({ ...held, [baseUrl]: roomId }));
+            closePanels();
+          }}
+        />
+      </div>
+
+      <AdaptivePanel
+        side="roster"
+        collapsed={narrow}
+        open={drawer === "roster"}
+        onClose={() => setDrawer(null)}
+      >
+        {roster}
+      </AdaptivePanel>
 
       {/* Knocks (SPEC §4.9, T-1102). Every server you are signed into, not
           only the one on screen: somebody knocking is the reason to go and
@@ -781,24 +905,14 @@ function Console({
                 server.file_expiry_days,
               )}
             >
-              {storageLine(server.storage_used_bytes, server.storage_limit_bytes)}
+              {storageLine(
+                server.storage_used_bytes,
+                server.storage_limit_bytes,
+              )}
             </span>
           )}
         </span>
         <span className="status-right">
-          {/* Who you are here, then the cog: the one icon every application
-              agrees means settings, and the reason a stranger finds them. */}
-          <span className="status-you">{you.display_name}</span>
-          <button
-            className="status-action status-cog"
-            type="button"
-            aria-pressed={settingsOpen}
-            aria-label="settings"
-            title="settings"
-            onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())}
-          >
-            <CogIcon />
-          </button>
           {updateWaiting && !settingsOpen ? (
             <button
               type="button"
@@ -809,7 +923,9 @@ function Console({
               update ready
             </button>
           ) : null}
-          {keyringNotice ? <span className="status-warn">not remembered</span> : null}
+          {keyringNotice ? (
+            <span className="status-warn">not remembered</span>
+          ) : null}
         </span>
       </footer>
     </div>
@@ -830,30 +946,104 @@ function ServerRow({
   state,
   current,
   onOpen,
+  onManage,
 }: {
   name: string;
   state: GatewayState | undefined;
   current: boolean;
   onOpen: () => void;
+  onManage?: (section: HostSection) => void;
 }) {
+  const [menuAnchor, setMenuAnchor] = useState<HTMLButtonElement | null>(null);
   const live = state?.status.kind === "ready";
   const waiting = state !== undefined && anyNewActivity(state);
-  const label = [name, live ? "connected" : "not connected", waiting ? "something new" : null]
+  const label = [
+    name,
+    live ? "connected" : "not connected",
+    waiting ? "something new" : null,
+  ]
     .filter((part) => part !== null)
     .join(", ");
   return (
-    <button
-      type="button"
-      className="server-item"
-      aria-current={current ? "true" : undefined}
-      aria-label={label}
-      data-live={live ? "true" : undefined}
-      data-new={waiting ? "true" : undefined}
-      onClick={onOpen}
-    >
-      <span className="server-dot" aria-hidden="true" />
-      <span className="server-name">{name}</span>
-    </button>
+    <div className="server-row" data-current={current || undefined}>
+      <button
+        type="button"
+        className="server-item"
+        aria-current={current ? "true" : undefined}
+        aria-label={label}
+        data-live={live ? "true" : undefined}
+        data-new={waiting ? "true" : undefined}
+        onClick={onOpen}
+      >
+        <span className="server-dot" aria-hidden="true" />
+        <span className="server-name" title={name}>
+          {name}
+        </span>
+      </button>
+      {onManage ? (
+        <>
+          <IconButton
+            label="Server options"
+            className="server-options-trigger"
+            tooltipSide="below"
+            aria-haspopup="dialog"
+            aria-expanded={menuAnchor !== null}
+            onClick={(event) => setMenuAnchor(event.currentTarget)}
+          >
+            <ActionIcon name="more" />
+          </IconButton>
+          {menuAnchor ? (
+            <ContextPanel
+              anchor={menuAnchor}
+              label="Server options"
+              className="server-options"
+              onClose={() => setMenuAnchor(null)}
+            >
+              <h3>Manage server</h3>
+              <p className="context-hint">Only the host sees these controls.</p>
+              <div className="context-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    onManage("server");
+                  }}
+                >
+                  Server settings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    onManage("invites");
+                  }}
+                >
+                  Invite people
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    onManage("rooms");
+                  }}
+                >
+                  Manage rooms
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    onManage("people");
+                  }}
+                >
+                  Manage members
+                </button>
+              </div>
+            </ContextPanel>
+          ) : null}
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -870,7 +1060,11 @@ function RoomStack({ people }: { people: User[] }) {
   const visible = people.slice(0, STACK_VISIBLE);
   const label = `${occupancyLine(people)} in the room`;
   return (
-    <span className="room-stack" aria-label={label} title={occupancyLine(people)}>
+    <span
+      className="room-stack"
+      aria-label={label}
+      title={occupancyLine(people)}
+    >
       {visible.map((person) => (
         <span
           key={person.id}

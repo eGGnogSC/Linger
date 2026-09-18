@@ -24,7 +24,8 @@ import type { User } from "../generated/User";
 import { ApiError, type AuthedApi } from "../lib/api";
 import { FONT_KEYS, FONT_LABELS } from "../lib/fonts";
 import { saveStyle } from "../lib/gateway";
-import { nameProps } from "../lib/names";
+import { nameProps, personStyle } from "../lib/names";
+import Button from "../lib/Button";
 import { PALETTE_KEYS } from "../lib/palette";
 import {
   draftOf,
@@ -50,12 +51,10 @@ export default function StylePicker({
   user,
   /** The reader's own settings, which can hide what this is previewing. */
   normalized,
-  dense,
 }: {
   api: AuthedApi;
   user: User;
   normalized: boolean;
-  dense: boolean;
 }) {
   const [draft, setDraft] = useState<StyleDraft>(() => draftOf(user.style));
   const [busy, setBusy] = useState(false);
@@ -87,7 +86,9 @@ export default function StylePicker({
       setSaved(true);
     } catch (error) {
       setProblem(
-        error instanceof ApiError ? error.message : "Couldn't save how your name looks.",
+        error instanceof ApiError
+          ? error.message
+          : "Couldn't save how your name looks.",
       );
     } finally {
       setBusy(false);
@@ -98,107 +99,116 @@ export default function StylePicker({
 
   return (
     <section className="settings-section">
-      <h3 className="panel-label">how your name looks</h3>
+      <h3 className="panel-label">Make yourself at home</h3>
       <p className="settings-lead">
-        This is what everybody else sees next to what you write. Colors are the
-        same sixteen for everyone, so there is no way to pick one nobody can
-        read.
+        Your name, your colors. Try a look before you save it.
       </p>
 
       {/* `name-raw` is the one exception in the app: this draws as itself even
-          when the reader has normalized everyone or is in a dense mode, because
+          when the reader has normalized everyone, because
           a preview that obeys your own reading settings is showing you the
           wrong thing. The note below says so out loud. */}
-      <p className="style-preview">
-        <span {...nameProps(preview, "name-raw style-preview-name")}>
-          {user.display_name}
-        </span>
-      </p>
-      {normalized || dense ? (
+      <div
+        className="style-preview"
+        style={personStyle(preview)}
+        aria-label="Style preview"
+      >
+        <div className="style-preview-heading">
+          <span {...nameProps(preview, "name-raw style-preview-name")}>
+            {user.display_name}
+          </span>
+          <span className="meta">Preview · only you can see this</span>
+        </div>
+        <p className="style-preview-message">
+          There you are. I saved you a seat.
+        </p>
+      </div>
+      {normalized ? (
         <p className="settings-hint meta">
-          {normalized
-            ? "You have other people's names normalized, so you won't see this — everybody else will."
-            : "Effects are off in compact and IRC, so you won't see those — everybody in comfortable will."}
+          Plain names are on in Appearance. This preview still shows your style.
         </p>
       ) : null}
 
-      <Fills draft={draft} onChange={change} />
+      <fieldset className="style-fields" disabled={busy}>
+        <legend className="sr-only">Your name and message style</legend>
+        <Fills draft={draft} onChange={change} />
 
-      <Choices label="face">
-        {FONT_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            className="style-font"
-            style={{ fontFamily: `var(--font-${key})` }}
-            aria-pressed={key === draft.fontKey}
-            onClick={() => change({ ...draft, fontKey: key })}
-          >
-            {FONT_LABELS[key]}
-          </button>
-        ))}
-      </Choices>
+        <Choices label="font">
+          {FONT_KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className="style-font"
+              style={{ fontFamily: `var(--font-${key})` }}
+              aria-pressed={key === draft.fontKey}
+              onClick={() => change({ ...draft, fontKey: key })}
+            >
+              {FONT_LABELS[key]}
+            </button>
+          ))}
+        </Choices>
 
-      <Choices label="weight">
-        {WEIGHTS.map((weight) => (
+        <Choices label="weight">
+          {WEIGHTS.map((weight) => (
+            <button
+              key={weight}
+              type="button"
+              className="style-option"
+              style={{ fontWeight: weight }}
+              aria-pressed={weight === draft.weight}
+              onClick={() => change({ ...draft, weight })}
+            >
+              {weight}
+            </button>
+          ))}
           <button
-            key={weight}
             type="button"
             className="style-option"
-            style={{ fontWeight: weight }}
-            aria-pressed={weight === draft.weight}
-            onClick={() => change({ ...draft, weight })}
+            style={{ fontStyle: "italic" }}
+            aria-pressed={draft.italic}
+            onClick={() => change({ ...draft, italic: !draft.italic })}
           >
-            {weight}
+            italic
           </button>
-        ))}
-        <button
-          type="button"
-          className="style-option"
-          style={{ fontStyle: "italic" }}
-          aria-pressed={draft.italic}
-          onClick={() => change({ ...draft, italic: !draft.italic })}
-        >
-          italic
-        </button>
-      </Choices>
+        </Choices>
 
-      <Choices label="effect">
-        {EFFECTS.map((effect) => (
-          <button
-            key={effect}
-            type="button"
-            className="style-option meta"
-            aria-pressed={effect === draft.effect}
-            onClick={() => change({ ...draft, effect })}
-          >
-            {EFFECT_WORDS[effect]}
-          </button>
-        ))}
-      </Choices>
+        <Choices label="effect">
+          {EFFECTS.map((effect) => (
+            <button
+              key={effect}
+              type="button"
+              className="style-option meta"
+              aria-pressed={effect === draft.effect}
+              onClick={() => change({ ...draft, effect })}
+            >
+              {EFFECT_WORDS[effect]}
+            </button>
+          ))}
+        </Choices>
 
-      <Choices label="your messages">
-        <button
-          type="button"
-          className="style-font"
-          aria-pressed={draft.msgFontKey === null}
-          onClick={() => change({ ...draft, msgFontKey: null })}
-        >
-          the reading face
-        </button>
-        {FONT_KEYS.map((key) => (
+        <Choices label="your messages">
           <button
-            key={key}
             type="button"
             className="style-font"
-            style={{ fontFamily: `var(--font-${key})` }}
-            aria-pressed={key === draft.msgFontKey}
-            onClick={() => change({ ...draft, msgFontKey: key })}
+            aria-pressed={draft.msgFontKey === null}
+            onClick={() => change({ ...draft, msgFontKey: null })}
           >
-            {FONT_LABELS[key]}
+            the reading face
           </button>
-        ))}
-      </Choices>
+          {FONT_KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className="style-font"
+              style={{ fontFamily: `var(--font-${key})` }}
+              aria-pressed={key === draft.msgFontKey}
+              onClick={() => change({ ...draft, msgFontKey: key })}
+            >
+              {FONT_LABELS[key]}
+            </button>
+          ))}
+        </Choices>
+      </fieldset>
       <p className="settings-hint meta">
         The face your messages are set in — the only thing you can change about
         the text itself. No colors and no sizes: your name carries who you are,
@@ -212,18 +222,22 @@ export default function StylePicker({
       )}
       {saved ? (
         <p className="settings-ok meta" role="status">
-          saved
+          ✓ Your look is saved.
         </p>
       ) : null}
       <div className="settings-actions">
-        <button
-          type="button"
-          className="settings-save"
+        {dirty ? (
+          <Button disabled={busy} onClick={() => change(draftOf(user.style))}>
+            Reset changes
+          </Button>
+        ) : null}
+        <Button
+          variant="primary"
           disabled={busy || !dirty}
           onClick={() => void submit()}
         >
-          {busy ? "saving…" : "save"}
-        </button>
+          {busy ? "Saving…" : "Save your look"}
+        </Button>
       </div>
     </section>
   );

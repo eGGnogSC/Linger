@@ -13,7 +13,7 @@ version = "0.2.0"
 edition = "2021"
 license = "AGPL-3.0-only"
 authors = ["Matt Guenther"]
-repository = "https://github.com/matthewguenther/Linger"
+repository = "https://github.com/itsMattGuenther/Linger"
 
 [workspace.dependencies]
 linger-core = { path = "crates/linger-core" }

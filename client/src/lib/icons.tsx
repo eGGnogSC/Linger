@@ -28,16 +28,22 @@ const ACTION_PATHS = {
   message: "M4 4h16v12H9l-5 4V4Z",
   settings: "M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6",
   send: "m3 3 18 9-18 9 4-9-4-9Zm4 9h14",
+  play: "M8 5.5v13L19 12 8 5.5Z",
+  smile:
+    "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2M15 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2M8.5 14.5s1.5 2 3.5 2 3.5-2 3.5-2",
 } as const;
+
+const FILLED = new Set<keyof typeof ACTION_PATHS>(["play"]);
 
 /** Familiar action glyphs share one stroke and inherit the label color. */
 export function ActionIcon({ name }: { name: keyof typeof ACTION_PATHS }) {
+  const filled = FILLED.has(name);
   return (
     <svg
       className="action-icon"
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "none" : "currentColor"}
       strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"

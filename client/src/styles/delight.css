@@ -199,16 +199,20 @@ button:is(
   margin-top: 0.75rem;
 }
 .sound-preference {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--hairline);
 }
 .sound-preference .preference-row {
+  flex: 1;
+  min-width: 0;
   border-bottom: 0;
 }
-.sound-preference > .ui-action {
-  margin-left: 0;
-  font-size: 0.8125rem;
-  min-height: 2rem;
+.sound-preference > .ui-icon {
+  flex: none;
+  align-self: center;
 }
 
 @media (prefers-reduced-motion: reduce) {

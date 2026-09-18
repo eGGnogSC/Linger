@@ -14,6 +14,9 @@ test("quiet defaults, category choices and master silence survive reload", async
   ]) {
     await expect(page.getByRole("switch", { name, exact: true })).toBeChecked();
   }
+  await expect(
+    page.getByRole("switch", { name: "Quiet hours", exact: true }),
+  ).not.toBeChecked();
   const rooms = page.getByRole("switch", {
     name: "room messages",
     exact: true,
@@ -29,7 +32,7 @@ test("quiet defaults, category choices and master silence survive reload", async
   for (const button of await page
     .getByRole("button", { name: /^preview/ })
     .all())
-    await expect(button).toBeDisabled();
+    await expect(button).toBeEnabled();
   await page.reload();
   await expect(rooms).toBeChecked();
   await expect(
@@ -40,23 +43,41 @@ test("quiet defaults, category choices and master silence survive reload", async
   ).toBeChecked();
 });
 
-test("quiet hours gate previews without silencing the voice session", async ({
+test("quiet hours silence live chimes but play still previews", async ({
   page,
 }) => {
   await page.clock.install({ time: new Date("2026-09-17T03:00:00Z") });
   await page.goto("/tests/fixtures/sounds.html");
   await expect(
-    page.getByRole("button", { name: "preview DM messages", exact: true }),
-  ).toBeDisabled();
+    page.getByRole("switch", { name: "Quiet hours", exact: true }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByText(/Quiet hours are silencing live chimes/),
+  ).toHaveCount(0);
+  await page
+    .getByRole("switch", { name: "Quiet hours", exact: true })
+    .check();
+  await expect(
+    page.getByText(/Quiet hours are silencing live chimes until 08:00/),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".sound-preference")
+      .filter({ hasText: "DM messages" })
+      .getByRole("button"),
+  ).toBeEnabled();
+  await expect(
+    page
+      .locator(".sound-preference")
+      .filter({ hasText: "room messages" })
+      .getByRole("button"),
+  ).toBeEnabled();
   await page
     .getByRole("switch", { name: "Quiet hours", exact: true })
     .uncheck();
   await expect(
-    page.getByRole("button", { name: "preview DM messages", exact: true }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole("button", { name: "preview room messages", exact: true }),
-  ).toBeDisabled();
+    page.getByText(/Quiet hours are silencing live chimes/),
+  ).toHaveCount(0);
   await expect(
     page.getByText(/To silence people in voice, use deafen/),
   ).toBeVisible();

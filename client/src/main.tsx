@@ -12,8 +12,18 @@ import "./styles/base.css";
 import "./styles/names.css";
 import App from "./App";
 import { applyInterfaceScale } from "./lib/interface";
+import { unlockAudio } from "./lib/sound";
 
 applyInterfaceScale();
+
+// WebKitGTK (and other engines) leave AudioContext suspended until a gesture.
+// Live chimes arrive from the gateway, which is not a click, so the first
+// pointer or key in this window has to open the device.
+const armAudio = (): void => {
+  unlockAudio();
+};
+window.addEventListener("pointerdown", armAudio);
+window.addEventListener("keydown", armAudio);
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root");

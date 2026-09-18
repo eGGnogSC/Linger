@@ -16,17 +16,18 @@ import type { User } from "../generated/User";
 import { ApiError, PublicApi, type AuthedApi } from "../lib/api";
 import { openExternal } from "../lib/external";
 import {
+  inQuietHours,
   loadSoundPrefs,
   QUIET_FROM_HOUR,
   QUIET_UNTIL_HOUR,
   saveSoundPrefs,
   SOUND_CATEGORIES,
-  cueAllowed,
-  playSound,
+  playPreview,
   type SoundCategory,
   type SoundCue,
   type SoundPrefs,
 } from "../lib/sound";
+import { useNow } from "../lib/clock";
 import { type ThemePref } from "../lib/theme";
 import {
   appVersion,
@@ -56,7 +57,7 @@ import {
 import "./settings.css";
 import AppearanceSettings from "./AppearanceSettings";
 import PreferenceSwitch from "./PreferenceSwitch";
-import Button from "../lib/Button";
+import IconButton from "../lib/IconButton";
 import { ActionIcon } from "../lib/icons";
 import StatusEditor from "../status/StatusEditor";
 import NotifyRules from "../notify/NotifyRules";
@@ -259,20 +260,26 @@ export default function SettingsPanel({
  * Two switches, and both are about your own machine rather than anything
  * anybody else can see, so they live here beside appearance preferences.
  *
- * Quiet hours is **on** by default and that is deliberate: the alternative is
- * an app that can wake somebody at 3am until they find the setting that stops
- * it. The window is 22:00–08:00 in your own time — a knock from a friend six
- * timezones away is judged by your clock, not theirs.
+ * Quiet hours is **off** until they turn it on. The window is 22:00–08:00 in
+ * your own time — a knock from a friend six timezones away is judged by your
+ * clock, not theirs.
  *
  * Notification cues share the same player and listener-local policy as knocks.
  */
 export function SoundSection() {
   const [prefs, setPrefs] = useState<SoundPrefs>(loadSoundPrefs);
+  const now = useNow();
 
   const change = (next: SoundPrefs): void => {
     setPrefs(next);
     saveSoundPrefs(next);
   };
+
+  const liveSilenced = prefs.muted
+    ? "All live chimes are off. Play still previews."
+    : prefs.quietHours && inQuietHours(new Date(now))
+      ? `Quiet hours are silencing live chimes until 0${QUIET_UNTIL_HOUR}:00. Play still previews.`
+      : null;
 
   return (
     <section className="settings-section">
@@ -292,6 +299,7 @@ export function SoundSection() {
         checked={prefs.quietHours}
         onChange={(quietHours) => change({ ...prefs, quietHours })}
       />
+      {liveSilenced ? <p className="settings-lead">{liveSilenced}</p> : null}
       {SOUND_CATEGORIES.map((category) => (
         <div key={category} className="sound-preference">
           <PreferenceSwitch
@@ -305,19 +313,20 @@ export function SoundSection() {
               })
             }
           />
-          <Button
-            aria-label={`preview ${SOUND_LABELS[category]}`}
-            disabled={!cueAllowed(SOUND_PREVIEWS[category], prefs, new Date())}
+          <IconButton
+            label={`Preview ${SOUND_LABELS[category]}`}
+            tooltip="Preview"
             onClick={() => {
-              void playSound(SOUND_PREVIEWS[category]);
+              void playPreview(SOUND_PREVIEWS[category]);
             }}
           >
-            <ActionIcon name="headphones" /> Listen
-          </Button>
+            <ActionIcon name="play" />
+          </IconButton>
         </div>
       ))}
       <p className="settings-lead">
-        Previews follow these switches and quiet hours too.
+        Play always sounds a preview. Live chimes still follow the switches and
+        quiet hours above.
       </p>
     </section>
   );

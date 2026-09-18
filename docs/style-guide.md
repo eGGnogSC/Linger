@@ -25,17 +25,27 @@ LINGER_CHROMIUM_PATH=/usr/bin/chromium node scripts/console-screenshots.mjs ../s
 |---|---|---|
 | Primary action | Filled accent, contrasting label, optional supporting icon | Continue, join voice, send |
 | Secondary action | Visible border and neutral fill at rest | Message, knock, attach |
-| Familiar toolbar action | Icon-only, named on hover and keyboard focus, 36px minimum target | Add, Settings, mute, deafen, collapse |
+| Familiar toolbar action | Icon-only, named on hover and keyboard focus, 36px minimum target | Add, Settings, mute, deafen, play, collapse |
 | Navigation | Full-row target, distinct selected surface and active rule | Servers, rooms, destinations |
 | Preference | Label + explanation + switch with On/Off text | Immediate settings |
 | Mutually exclusive choice | Bordered preview and checked selected state | Color theme |
 | Metadata | Smaller monospace, never mistaken for an action | Timestamps, connection data |
 
-Use sentence-case labels describing actions. Familiar toolbar symbols save space;
-less familiar actions keep their words. Icon-only controls always have accessible
-names and hover/focus tooltips. Keep control states visible at rest; hover reinforces them.
-Keyboard focus has a separate ring, never just a color shift. Disabled controls
-remain recognizable but do not compete with available actions.
+## Symbols first
+
+Symbols are the shared language. Prefer a familiar icon with a hover/focus name
+over an icon sitting next to the same word. Visible text is for actions that
+have no well-known mark — Join voice, Send, Continue — or that would be
+ambiguous as a glyph. Do not invent a new mark when a universal one exists:
+play to preview sound, plus to add (in the composer: Add file…), a smile for
+emoji, a gear for settings.
+
+Icon-only controls are 36px minimum, named for screen readers, and show that
+name on hover and keyboard focus. Keep control states visible at rest; hover
+reinforces them. Keyboard focus has a separate ring, never just a color shift.
+Disabled controls remain recognizable but do not compete with available actions.
+
+Use sentence-case for any remaining visible labels.
 
 Voice participants are plain names, not pill-shaped selectors. A chevron beside
 the voice heading collapses the names; Join voice and call controls align right.
@@ -76,9 +86,10 @@ avatars, rounded panels, shadows or gradients on surfaces.
 - **Sounds:** a shared soft tonal palette with opposite contours for opposite
   actions. Peers are quieter than your own voice actions; knocks keep two wood
   taps. Cues are synthesized locally with zero new dependencies or sound
-  downloads. Mute, categories, quiet hours and burst protection are unchanged.
-  Reactions, typing, saving and browsing remain silent. This is not personal
-  entrance sounds, which remain deferred.
+  downloads. Mute, categories, quiet hours and burst protection still gate
+  live chimes. Settings play is a click and always sounds. Reactions, typing,
+  saving and browsing remain silent. This is not personal entrance sounds,
+  which remain deferred.
 
 Open `screenshots/review-04/sounds/index.html` for listening samples. They are
 offline renders of the production score, not proof of physical speaker volume,

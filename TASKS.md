@@ -645,7 +645,7 @@ middle of it. Anything that lands before them must not break the frames they rel
 - ⬜ **T-901 · Entrance sound playback** — effort: **medium**
   SPEC §4.1. Play on `room.enter` for those in the room; per-user cooldown
   5min/listener;
-  global + per-user mute; quiet hours 22:00–08:00 listener-local default-on;
+  global + per-user mute; quiet hours 22:00–08:00 listener-local, off until they opt in;
   picker UI for bundled sounds.
   **The player already exists — extend it, do not write a second one.**
   `client/src/lib/sound.ts` landed with T-1102 and already owns the global mute

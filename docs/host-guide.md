@@ -141,7 +141,7 @@ least eight characters). The new account is the host account.
 If the app says it cannot reach the server, check
 [the connection steps below](#the-app-cannot-reach-the-server) before asking
 for a new token. The desktop app does not start when you run Docker commands;
-open it again the same way you installed it.
+open it from your application menu, or the same way you installed it.
 
 ## 7. Invite people
 
@@ -338,7 +338,11 @@ docker compose pull
 docker compose up -d
 ```
 
-Nothing updates itself. You decide when.
+Nothing updates itself. You decide when. These commands use the image name
+already in your `compose.yaml`. If that line still says
+`ghcr.io/matthewguenther/linger`, change it to
+`ghcr.io/itsmattguenther/linger:latest` (all lowercase) before pulling. GitHub
+pages follow the username change; the container registry does not.
 
 If you use voice, include the profile in both commands so the relay updates too:
 
@@ -406,8 +410,13 @@ Do not share your `.env` or setup token when asking for help.
   step 5, then `docker compose up -d` again. It does not delete the database.
 - **Chat works but uploads fail.** The `cdn.` record is missing, or the second
   block of the Caddyfile still says `linger.example.com`.
-- **`docker compose pull` says `unauthorized`.** The prebuilt image is not
-  available to you. Clone the repository and build it yourself:
+- **`docker compose pull` says `unauthorized`, or the image line still names
+  `matthewguenther`.** The published image is
+  `ghcr.io/itsmattguenther/linger` (all lowercase). GitHub Container Registry
+  does not follow a GitHub username change, so an old compose file pulls a
+  name that does not exist. Fix the `image:` line, then pull again. If it is
+  still unauthorized after that, the prebuilt image is not available to you;
+  clone the repository and build it yourself:
   `docker build -f deploy/Dockerfile -t ghcr.io/itsmattguenther/linger:latest .`
 - **The setup link does not work.** It works once. If you already made an
   account, it is gone for good — that is deliberate. If no account was made

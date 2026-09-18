@@ -218,7 +218,7 @@ export default function StatusEditor({
       />
 
       {/* SPEC §4.6's one image. The picker is hidden and driven by the button,
-          the way the composer's `+ file` is, so the control is a control and
+          the way the composer's plus is, so the control is a control and
           not a browser widget in the middle of a Console form. */}
       <div className="editor-field">
         <span className="panel-label">image</span>

@@ -38,11 +38,12 @@ describe("soundAllowed", () => {
     expect(soundAllowed(DEFAULTS, at(14))).toBe(true);
   });
 
-  it("holds it at 3am, because quiet hours are on by default", () => {
-    expect(soundAllowed(DEFAULTS, at(3))).toBe(false);
+  it("plays at 3am by default, because quiet hours are off until opted in", () => {
+    expect(soundAllowed(DEFAULTS, at(3))).toBe(true);
   });
 
-  it("plays at 3am for somebody who turned quiet hours off", () => {
+  it("holds it at 3am once somebody turns quiet hours on", () => {
+    expect(soundAllowed({ ...DEFAULTS, quietHours: true }, at(3))).toBe(false);
     expect(soundAllowed(LOUD, at(3))).toBe(true);
   });
 

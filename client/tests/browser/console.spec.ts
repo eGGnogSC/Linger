@@ -668,3 +668,73 @@ for (const display of [
     });
   }
 }
+
+test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/tests/fixtures/console.html");
+  const railContent = page.locator(".rail-content");
+  const rail = page.locator(".rail");
+  const places = page.locator(".rail-places");
+
+  const noSidewaysOverflow = async () =>
+    expect(
+      await railContent.evaluate(
+        (node) => node.scrollWidth <= node.clientWidth,
+      ),
+    ).toBe(true);
+  // The hairline above Media/Search bleeds out to the rail's own edges by
+  // design (it is drawn full-bleed, like every other hairline). Checking it
+  // still reaches those edges catches a future "fix" that clips it short
+  // with overflow-x: hidden instead of closing the gap it overflows.
+  const hairlineSpansRail = async () => {
+    const railBox = await rail.boundingBox();
+    const placesBox = await places.boundingBox();
+    if (!railBox || !placesBox) throw new Error("missing rail or places box");
+    expect(Math.abs(placesBox.x - railBox.x)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(placesBox.x + placesBox.width - (railBox.x + railBox.width)),
+    ).toBeLessThanOrEqual(1);
+  };
+
+  // (a) At the default width, the rail's content is nowhere near tall enough
+  // to need vertical scrolling, so there is nothing to check but that the box
+  // is exactly as wide as its own content.
+  await noSidewaysOverflow();
+  await hairlineSpansRail();
+
+  // (b) Resizing the rail narrower and then wider must not reopen the gap:
+  // the scroll box is full-bleed to whatever width the rail currently has.
+  const railSeparator = page.getByRole("separator", {
+    name: "Resize navigation",
+  });
+  await railSeparator.focus();
+  await page.keyboard.press("Home");
+  await expect(railSeparator).toHaveAttribute("aria-valuenow", "200");
+  await noSidewaysOverflow();
+  await hairlineSpansRail();
+  await page.keyboard.press("End");
+  await expect(railSeparator).toHaveAttribute("aria-valuenow", "360");
+  await noSidewaysOverflow();
+  await hairlineSpansRail();
+
+  // (c) A short window is where the rail genuinely needs to scroll up and
+  // down. That must not also turn on sideways scrolling.
+  await page.setViewportSize({ width: 900, height: 480 });
+  await expect
+    .poll(() =>
+      railContent.evaluate((node) => node.scrollHeight > node.clientHeight),
+    )
+    .toBe(true);
+  await noSidewaysOverflow();
+
+  // (d) Narrow enough that navigation moves into a drawer over the message
+  // list: same scroll box, same fix.
+  await page.setViewportSize({ width: 600, height: 480 });
+  await page.getByRole("button", { name: "Navigation", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Navigation", exact: true }),
+  ).toBeVisible();
+  await noSidewaysOverflow();
+});

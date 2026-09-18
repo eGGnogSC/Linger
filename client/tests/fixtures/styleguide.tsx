@@ -76,6 +76,9 @@ function Guide() {
             <IconButton label="Leave voice">
               <ActionIcon name="leave" />
             </IconButton>
+            <IconButton label="Preview mute and deafen controls" tooltip="Preview">
+              <ActionIcon name="play" />
+            </IconButton>
           </div>
           <div className="guide-examples">
             <IconButton label="Muted" aria-pressed>

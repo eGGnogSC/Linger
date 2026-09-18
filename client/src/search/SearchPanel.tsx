@@ -186,7 +186,9 @@ export default function SearchPanel({
               <option value="">any room</option>
               {rooms.map((one) => (
                 <option key={one.id} value={one.id}>
-                  #{one.slug}
+                  {/* A DM has no slug worth drawing (SPEC §4.13); this is the
+                      same name the rail and the hit list already use. */}
+                  {conversationLabel(one, users, me) ?? `#${one.slug}`}
                 </option>
               ))}
             </select>

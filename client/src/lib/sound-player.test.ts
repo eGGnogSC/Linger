@@ -13,7 +13,9 @@ describe("notification sound policy", () => {
     vi.stubGlobal("window", { localStorage: storage(held) });
     const sound = await import("./sound");
     const prefs = sound.loadSoundPrefs();
-    expect(prefs).toEqual({ muted: true, quietHours: true, categories: { voice: true, controls: true, dms: true, rooms: true, knocks: true } });
+    expect(prefs).toEqual({ muted: true, quietHours: false, categories: { voice: true, controls: true, dms: true, rooms: true, knocks: true } });
+    held.set("linger.sound.quietHours", "true");
+    expect(sound.loadSoundPrefs().quietHours).toBe(true);
     sound.saveSoundPrefs({ ...prefs, muted: false, categories: { ...prefs.categories, rooms: false } });
     expect(sound.loadSoundPrefs().categories.rooms).toBe(false);
     expect(sound.cueAllowed("dm", sound.loadSoundPrefs(), new Date())).toBe(true);
@@ -33,7 +35,7 @@ describe("notification sound policy", () => {
   it("master mute and quiet hours win over every category", async () => {
     const sound = await import("./sound");
     for (const cue of ["voice-join", "voice-move", "peer-leave", "mute", "deafen", "dm", "room", "knock"] as const) {
-      const prefs = { ...sound.DEFAULT_SOUND_PREFS, categories: { voice: true, controls: true, dms: true, rooms: true, knocks: true } };
+      const prefs = { ...sound.DEFAULT_SOUND_PREFS, quietHours: true, categories: { voice: true, controls: true, dms: true, rooms: true, knocks: true } };
       expect(sound.cueAllowed(cue, prefs, new Date(2026, 8, 17, 3))).toBe(false);
       expect(sound.cueAllowed(cue, { ...prefs, muted: true }, new Date())).toBe(false);
     }
@@ -65,6 +67,7 @@ describe("notification sound policy", () => {
       createOscillator() { return { ...node }; }
     } });
     const sound = await import("./sound");
+    sound.unlockAudio();
     await expect(sound.playSound("dm")).resolves.toBe(false);
     resume = async () => { vi.advanceTimersByTime(1100); };
     await expect(sound.playSound("dm")).resolves.toBe(false);
@@ -75,5 +78,24 @@ describe("notification sound policy", () => {
     expect(starts).toHaveLength(4);
     vi.advanceTimersByTime(1200);
     await expect(sound.playSound("dm")).resolves.toBe(true);
+  });
+
+  it("Listen previews play during quiet hours and master silence", async () => {
+    const starts: number[] = [];
+    const param = { setValueAtTime: () => {}, linearRampToValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} };
+    const node = { connect: () => node, disconnect: () => {}, gain: param, frequency: param, start: (at: number) => starts.push(at), stop: () => {} };
+    vi.stubGlobal("window", { localStorage: storage(), AudioContext: class {
+      state = "running"; currentTime = 0; destination = {};
+      async resume() {}
+      createGain() { return node; }
+      createOscillator() { return { ...node }; }
+    } });
+    vi.setSystemTime(new Date(2026, 8, 17, 3));
+    const sound = await import("./sound");
+    sound.saveSoundPrefs({ ...sound.DEFAULT_SOUND_PREFS, muted: true });
+    expect(sound.cueAllowed("mute", sound.loadSoundPrefs(), new Date())).toBe(false);
+    await expect(sound.playSound("mute")).resolves.toBe(false);
+    await expect(sound.playPreview("mute")).resolves.toBe(true);
+    expect(starts.length).toBeGreaterThan(0);
   });
 });

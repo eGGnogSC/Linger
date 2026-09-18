@@ -78,6 +78,11 @@ fallback unchanged. Invalid values fail clearly. It is a per-launch option,
 not a global desktop change or an automatic graphics fallback. See
 `docs/linux-input-checks.md` for packaged evidence and hardware limits.
 
+The same startup path ignores `SIGHUP` so closing the launching terminal does
+not kill the window, and an AppImage writes a user menu entry
+(`com.linger.desktop`) so the next open does not need a terminal. Packaged
+`.deb` / `.rpm` installs already ship a system launcher.
+
 ---
 
 ## 3. Repository layout

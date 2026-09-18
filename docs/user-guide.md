@@ -50,10 +50,11 @@ chmod +x ~/Downloads/Linger_0.2.0_amd64.AppImage
 ~/Downloads/Linger_0.2.0_amd64.AppImage
 ```
 
-The first line allows it to run; the second opens the window. **Keep the
-terminal open while using it.** To reopen Linger later, run just the second
-line again, or open the executable file from your file manager. No Docker
-commands are needed on your computer.
+The first line allows it to run; the second opens the window. You can close
+the terminal after that — Linger keeps running. The first launch also adds
+**Linger** to your application menu; use that to reopen it. You can still
+start the same file from a terminal or the file manager. No Docker commands
+are needed on your computer.
 
 **No window?** Use [AppImage troubleshooting](#appimage-troubleshooting) below
 for FUSE or graphics errors. Once the window opens, go to [Getting in](#getting-in).
@@ -138,10 +139,11 @@ WEBKIT_DMABUF_RENDERER_DISABLE_GBM=1 ~/Downloads/Linger_0.2.0_amd64.AppImage
 ```
 
 This opened Linger on the tested Omarchy/Wayland computer. It changes only
-this launch, not your system graphics settings. If it works for you, use
-**this full command every time you reopen the app**. It is not required on
-every Linux computer. If it still fails, keep the terminal error to share
-when asking for help; leave setup tokens and invite links out of screenshots.
+this launch, not your system graphics settings. If it works for you, run that
+full command once so the application-menu entry keeps the same setting; after
+the window opens you can close the terminal. It is not required on every
+Linux computer. If it still fails, keep the terminal error to share when
+asking for help; leave setup tokens and invite links out of screenshots.
 
 **Voxtype puts numbers or symbols into chat instead of your words:** use
 clipboard output, then paste. The `0.1.0` AppImage forces X11; on a Wayland
@@ -241,10 +243,15 @@ Hover a message for its buttons:
   to edit the last thing you said.
 - **delete** — asks once, then it is gone
 
+The **smile** on the right of the box opens a small set of ordinary emoji to
+drop into what you are typing. Hover it for **Emoji**. This is not the twelve
+reactions on a message, and there are no custom emoji.
+
 ## Sharing files
 
-Three ways, all the same thing: the **+ file** button, drag a file onto the box,
-or paste one from your clipboard.
+Three ways, all the same thing: the **+** on the left of the box, then
+**Add file…**, drag a file onto the box, or paste one from your clipboard.
+Hover **+** for **Add**.
 
 Click a posted image to expand it. It stays centered and fits the window, even
 when you resize it. Press **Escape**, click the preview, or choose **close** to
@@ -328,8 +335,9 @@ person sees a small card for eight seconds, then it is gone. Your button says
 **knocked** for three seconds, then returns to **knock**; that confirms the
 request, not that they saw it. There is no message and nothing for them to
 answer. Three an hour per person, so it stays a tap. A soft sound accompanies
-the card unless sounds are muted or their quiet hours apply (22:00–08:00 by
-default). Quiet hours silence the sound, not the card.
+the card unless sounds are muted or quiet hours are on (22:00–08:00 on this
+computer's clock). Quiet hours are off until you turn them on. They silence
+the sound, not the card.
 
 ## Finding things again
 
@@ -411,9 +419,11 @@ in selected rooms.
 
 For chimes, open **settings → sound & voice**. Voice-session joins, leaves and
 moves, mute/deafen changes, DMs and knocks have sounds by default. Ordinary
-room-message sounds start off. Turn each category on or off, choose **Listen**
-to preview its sound, or use **Mute all notification sounds**. Quiet hours silence chimes
-between 22:00 and 08:00 on your computer's clock by default.
+room-message sounds start off. Turn each category on or off, press **play**
+beside it to preview, or use **Mute all notification sounds**. Play always
+sounds, even during quiet hours or with a category switched off, so you can
+hear what you are choosing. Quiet hours, when you turn them on, silence
+*live* chimes between 22:00 and 08:00 on your computer's clock.
 
 Messages you are already reading, your own messages, reconnect replay and
 push-to-talk presses do not chime. These switches do not silence voice chat;

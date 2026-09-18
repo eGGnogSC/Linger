@@ -112,7 +112,8 @@ These terms are used everywhere — UI, code, docs, error messages:
 - 🚪 **Knock** *(the first piece of V2, built)* — nudge one person from their card in
   the roster. They get a soft knock and a card that fades on its own: no message, no
   thread, nothing to dismiss, and nothing written down at either end. Three an hour
-  per person, and sounds are muted between 22:00 and 08:00 on your own clock
+  per person. Quiet hours (22:00–08:00 on your own clock) are off until you turn
+  them on
 - 🔉 **Optional chimes** — voice-session events, mic/deafen controls, DMs and
   knocks; ordinary room-message sounds default off. Settings → sound & voice
   has category switches, a master silence control and quiet hours. No chimes

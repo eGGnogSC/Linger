@@ -48,6 +48,8 @@ import type { RoomId } from "../generated/RoomId";
 import type { User } from "../generated/User";
 import { ApiError, type AuthedApi } from "../lib/api";
 import { ActionIcon } from "../lib/icons";
+import IconButton from "../lib/IconButton";
+import ContextPanel from "../lib/ContextPanel";
 import { useNow } from "../lib/clock";
 import { dmLabel } from "../dm/dm";
 import { emptyRoom } from "../settings/copy";
@@ -80,6 +82,7 @@ import MarkdownBody, { type MentionLookup } from "./MarkdownBody";
 import { uploadFile } from "../lib/upload";
 import { linkTargets, mentionHandles, plainText } from "./markdown";
 import { REACTIONS, reactionOf, reactionTitle, reactionWeight } from "./reactions";
+import { COMPOSER_EMOJI, insertGlyph } from "./composerEmoji";
 import { buildRows, type StreamRow } from "./rows";
 import { useResizeAnchor } from "./resize";
 import { ageOpacity, clockTime, fullTime, sessionLabel } from "./time";
@@ -1290,6 +1293,8 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState<Pending[]>([]);
   const [dropping, setDropping] = useState(false);
+  const [addMenu, setAddMenu] = useState<HTMLButtonElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement | null>(null);
   const picker = useRef<HTMLInputElement | null>(null);
 
@@ -1396,6 +1401,11 @@ export function Composer({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (event.key === "Escape" && emojiOpen) {
+      event.preventDefault();
+      setEmojiOpen(false);
+      return;
+    }
     if (event.key === "Escape" && replyTo) {
       event.preventDefault();
       onClearReply();
@@ -1416,6 +1426,25 @@ export function Composer({
   };
 
   const left = MAX_MESSAGE_CHARS - draft.length;
+
+  const putEmoji = (glyph: string): void => {
+    const field = box.current;
+    const start = field?.selectionStart ?? draft.length;
+    const end = field?.selectionEnd ?? draft.length;
+    const next = insertGlyph(draft, glyph, start, end, MAX_MESSAGE_CHARS);
+    if (next === null) {
+      setProblem(`A message can be at most ${MAX_MESSAGE_CHARS} characters.`);
+      return;
+    }
+    setDraft(next.text);
+    setEmojiOpen(false);
+    window.requestAnimationFrame(() => {
+      const node = box.current;
+      if (!node) return;
+      node.focus();
+      node.setSelectionRange(next.caret, next.caret);
+    });
+  };
 
   return (
     <form
@@ -1474,42 +1503,99 @@ export function Composer({
         </ul>
       )}
       <div className="composer-row">
-        <textarea
-          ref={box}
-          className="composer-input"
-          rows={1}
-          value={draft}
-          maxLength={MAX_MESSAGE_CHARS}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            if (event.target.value !== "") startedTyping(api, room.id);
+        <IconButton
+          label="Add"
+          aria-expanded={addMenu !== null}
+          aria-haspopup="menu"
+          onClick={(event) => {
+            setEmojiOpen(false);
+            setAddMenu((held) => (held ? null : event.currentTarget));
           }}
-          onKeyDown={onKeyDown}
-          onPaste={(event) => {
-            const pasted = [...event.clipboardData.files];
-            if (pasted.length > 0) {
-              event.preventDefault();
-              attach(pasted);
-            }
-          }}
-          placeholder={
-            replyTo
-              ? "say something back"
-              : isDm
-                ? `say something to ${title}`
-                : `say something in ${title}`
-          }
-          aria-label={isDm ? `message ${title}` : `message in ${title}`}
-          autoComplete="off"
-        />
-        <button
-          type="button"
-          className="composer-attach"
-          onClick={() => picker.current?.click()}
-          aria-label="attach a file"
         >
-          <ActionIcon name="plus" /> File
-        </button>
+          <ActionIcon name="plus" />
+        </IconButton>
+        {addMenu ? (
+          <ContextPanel
+            anchor={addMenu}
+            label="Add to this message"
+            onClose={() => setAddMenu(null)}
+          >
+            <div className="context-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  picker.current?.click();
+                  setAddMenu(null);
+                }}
+              >
+                Add file…
+              </button>
+            </div>
+          </ContextPanel>
+        ) : null}
+        <div className="composer-field">
+          <textarea
+            ref={box}
+            className="composer-input"
+            rows={1}
+            value={draft}
+            maxLength={MAX_MESSAGE_CHARS}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              if (event.target.value !== "") startedTyping(api, room.id);
+            }}
+            onKeyDown={onKeyDown}
+            onPaste={(event) => {
+              const pasted = [...event.clipboardData.files];
+              if (pasted.length > 0) {
+                event.preventDefault();
+                attach(pasted);
+              }
+            }}
+            placeholder={
+              replyTo
+                ? "say something back"
+                : isDm
+                  ? `say something to ${title}`
+                  : `say something in ${title}`
+            }
+            aria-label={isDm ? `message ${title}` : `message in ${title}`}
+            autoComplete="off"
+          />
+          <IconButton
+            label="Emoji"
+            className="composer-emoji"
+            aria-expanded={emojiOpen}
+            aria-haspopup="dialog"
+            onClick={() => {
+              setAddMenu(null);
+              setEmojiOpen((open) => !open);
+            }}
+          >
+            <ActionIcon name="smile" />
+          </IconButton>
+          {emojiOpen ? (
+            <div
+              className="composer-emoji-panel"
+              role="dialog"
+              aria-label="Emoji"
+            >
+              <div className="composer-emoji-grid">
+                {COMPOSER_EMOJI.map((one) => (
+                  <button
+                    key={`${one.label}:${one.glyph}`}
+                    type="button"
+                    className="composer-emoji-mark"
+                    aria-label={one.label}
+                    onClick={() => putEmoji(one.glyph)}
+                  >
+                    {one.glyph}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
         <input
           ref={picker}
           type="file"

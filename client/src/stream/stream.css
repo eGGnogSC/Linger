@@ -441,3 +441,30 @@ button.msg-reply:hover {
 .msg-edit-hint {
   color: var(--text-faint);
 }
+
+dialog.composer-emoji-panel {
+  width: 18.5rem;
+  padding: 2.5rem 0.75rem 0.75rem;
+}
+
+.composer-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.composer-emoji-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.composer-emoji-mark:hover,
+.composer-emoji-mark:focus-visible {
+  background: var(--control-hover);
+}

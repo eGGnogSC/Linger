@@ -7,9 +7,10 @@
  * The gate is SPEC §4.1's, and it applies to knocks too:
  *
  * - **Global mute.** Off by default; one switch in settings.
- * - **Quiet hours, 22:00–08:00 in the listener's own time, default on.** The
- *   listener's clock, never the sender's — 2am for you is what matters, and
- *   somebody knocking from another timezone does not get to decide that.
+ * - **Quiet hours, 22:00–08:00 in the listener's own time, off until they
+ *   turn it on.** The listener's clock, never the sender's — 2am for you is
+ *   what matters, and somebody knocking from another timezone does not get to
+ *   decide that.
  *
  * Both are the reader's preference about their own machine, so they live in
  * local storage beside appearance preferences rather than in the gateway store.
@@ -34,7 +35,7 @@ export type SoundCue = "voice-join" | "voice-leave" | "voice-move" | "peer-join"
   | "mute" | "unmute" | "deafen" | "undeafen" | "dm" | "room" | "knock";
 
 export const DEFAULT_SOUND_PREFS: SoundPrefs = {
-  muted: false, quietHours: true,
+  muted: false, quietHours: false,
   categories: { voice: true, controls: true, dms: true, rooms: false, knocks: true },
 };
 let fallbackPrefs = DEFAULT_SOUND_PREFS;
@@ -44,7 +45,7 @@ let storageUnavailable = false;
 export interface SoundPrefs {
   /** Nothing makes a sound. Off by default. */
   muted: boolean;
-  /** Nothing makes a sound between 22:00 and 08:00. **On** by default. */
+  /** Nothing makes a sound between 22:00 and 08:00. Off until they opt in. */
   quietHours: boolean;
   categories: Record<SoundCategory, boolean>;
 }
@@ -65,8 +66,8 @@ export function soundAllowed(prefs: SoundPrefs, at: Date): boolean {
 }
 
 /**
- * The saved preferences, or the defaults. Quiet hours default **on**: a
- * product that wakes people up at 3am has to be opted into, not out of.
+ * The saved preferences, or the defaults. Quiet hours stay **off** until
+ * they turn them on: chimes are opt-in silence, not opt-out noise.
  */
 export function loadSoundPrefs(): SoundPrefs {
   if (storageUnavailable) return fallbackPrefs;
@@ -82,7 +83,7 @@ export function loadSoundPrefs(): SoundPrefs {
     }
     return {
       muted: window.localStorage.getItem(MUTE_KEY) === "true",
-      quietHours: window.localStorage.getItem(QUIET_KEY) !== "false",
+      quietHours: window.localStorage.getItem(QUIET_KEY) === "true",
       categories,
     };
   } catch {
@@ -110,13 +111,43 @@ export function saveSoundPrefs(prefs: SoundPrefs): void {
  * Contexts are a limited resource in every engine — making one per knock is
  * how a browser eventually refuses to make any. `null` means there is no audio
  * here at all (a test runner, a headless session), which is not an error.
+ *
+ * WebKitGTK starts the context suspended until a user gesture. Live chimes
+ * often arrive from the gateway, which is not a gesture, so the first click
+ * or key in the window has to resume it. Listen is itself a gesture.
  */
 let context: AudioContext | null = null;
 
-function audio(): AudioContext | null {
-  if (typeof window === "undefined" || typeof window.AudioContext !== "function") return null;
-  context ??= new window.AudioContext();
+function audioConstructor(): (new () => AudioContext) | undefined {
+  if (typeof window === "undefined") return undefined;
+  const webkit = (window as unknown as { webkitAudioContext?: new () => AudioContext })
+    .webkitAudioContext;
+  if (typeof window.AudioContext === "function") return window.AudioContext;
+  if (typeof webkit === "function") return webkit;
+  return undefined;
+}
+
+function audio(create: boolean): AudioContext | null {
+  if (context !== null) return context;
+  if (!create) return null;
+  const Ctor = audioConstructor();
+  if (Ctor === undefined) return null;
+  try {
+    context = new Ctor();
+  } catch {
+    return null;
+  }
   return context;
+}
+
+/**
+ * Open the audio device from a click or key. Live chimes arrive later, from
+ * the gateway, which WebKitGTK does not treat as a gesture — creating the
+ * context there leaves it suspended for good on Linux.
+ */
+export function unlockAudio(): void {
+  const ctx = audio(true);
+  if (ctx?.state === "suspended") void ctx.resume().catch(() => {});
 }
 
 /**
@@ -147,13 +178,26 @@ const lastPlayed = new Map<SoundCategory, number>();
 
 /** Never queues an old cue for later or throws when the audio device refuses. */
 export async function playSound(cue: SoundCue, now: Date = new Date()): Promise<boolean> {
-  if (!cueAllowed(cue, loadSoundPrefs(), now)) return false;
+  return play(cue, now, false);
+}
+
+/**
+ * Settings Listen. The person asked to hear this cue, so mute, quiet hours,
+ * categories and burst protection do not apply. Live events still go through
+ * {@link playSound}.
+ */
+export async function playPreview(cue: SoundCue): Promise<boolean> {
+  return play(cue, new Date(), true);
+}
+
+async function play(cue: SoundCue, now: Date, preview: boolean): Promise<boolean> {
+  if (!preview && !cueAllowed(cue, loadSoundPrefs(), now)) return false;
   const category = categoryOf(cue);
   const cooldown = category === "dms" || category === "rooms" ? 1200 : 100;
   const started = Date.now();
-  if (started - (lastPlayed.get(category) ?? -Infinity) < cooldown) return false;
+  if (!preview && started - (lastPlayed.get(category) ?? -Infinity) < cooldown) return false;
   try {
-    const ctx = audio();
+    const ctx = audio(preview);
     if (ctx === null || ctx.state === "closed") return false;
     if (ctx.state === "suspended") {
       let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -166,9 +210,22 @@ export async function playSound(cue: SoundCue, now: Date = new Date()): Promise<
     if (ctx.state !== "running") return false;
     // Recheck after the await: preferences may have changed, or another cue
     // won the same burst. Never play something saved by a suspended context.
-    if (Date.now() - started > 1000 || !cueAllowed(cue, loadSoundPrefs(), new Date(now.getTime() + Date.now() - started))) return false;
-    if (Date.now() - (lastPlayed.get(category) ?? -Infinity) < cooldown) return false;
-    lastPlayed.set(category, Date.now());
+    // A preview is the click itself, so it is not stale.
+    if (
+      !preview &&
+      (Date.now() - started > 1000 ||
+        !cueAllowed(
+          cue,
+          loadSoundPrefs(),
+          new Date(now.getTime() + Date.now() - started),
+        ))
+    ) {
+      return false;
+    }
+    if (!preview && Date.now() - (lastPlayed.get(category) ?? -Infinity) < cooldown) {
+      return false;
+    }
+    if (!preview) lastPlayed.set(category, Date.now());
     scheduleChime(ctx, cue, ctx.currentTime + 0.01);
     return true;
   } catch {

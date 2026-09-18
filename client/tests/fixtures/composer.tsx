@@ -5,6 +5,7 @@ import { AuthedApi } from "../../src/lib/api";
 import { Composer } from "../../src/stream/Stream";
 import "../../src/styles/tokens.css";
 import "../../src/styles/base.css";
+import "../../src/app.css";
 
 const api = new AuthedApi("https://fixture.invalid", {
   accessToken: "fixture", refreshToken: "fixture", expiresAt: Date.now() + 60_000,

@@ -167,7 +167,7 @@ Requirements:
 - Rate limit: a given user's sound plays at most once per 5 minutes per listener,
   regardless of how many times they enter.
 - Global mute, per-user mute, and automatic mute between 22:00–08:00 listener-local
-  time (default on).
+  time (off until they opt in).
 
 ### 4.2 No unread counts
 
@@ -191,8 +191,10 @@ keyword-based system delivers it.
 master silence switch and separate controls for voice sessions, microphone/
 deafen controls, DMs, room messages and knocks. Voice/control/DM/knock sounds
 default on; ordinary room-message sounds default off. Quiet hours remain
-22:00–08:00 listener-local, default on. These settings silence notification
-chimes, not other people's voice; deafen is the control for that (§4.14).
+22:00–08:00 listener-local, off until they opt in. These settings silence *live*
+notification chimes, not other people's voice; deafen is the control for that
+(§4.14). The play control in settings is a deliberate click and is not gated
+by mute, quiet hours or category switches.
 
 - Voice cues: your join, leave or move, and other sessions arriving/leaving
   the voice session you are already in. No cue for browsing a text room, no
@@ -332,7 +334,9 @@ sunset. Subtle enough that most people never consciously notice. User-disableabl
 
 ### 4.8 Reactions
 
-Fixed palette of 12. No custom emoji in V1, no emoji picker.
+Fixed palette of 12. No custom emoji in V1. Reactions are those twelve keys —
+there is no picker of arbitrary marks. The composer can insert ordinary Unicode
+emoji into a message body from a small selector; that is typing, not a reaction.
 
 Reactions accumulate **visibly by weight, not by number**. Six people hitting the same
 reaction produces a denser, larger mark, not `👍 6`. Hover reveals who.

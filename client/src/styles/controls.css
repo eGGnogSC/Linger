@@ -27,7 +27,6 @@ button:is(
   .settings-close,
   .settings-mini,
   .since-pull,
-  .composer-attach,
   .roster-switch,
   .person-edit
 ) {
@@ -58,7 +57,6 @@ button:is(
     .settings-close,
     .settings-mini,
     .since-pull,
-    .composer-attach,
     .roster-switch,
     .person-edit
   ):hover:not(:disabled) {
@@ -106,16 +104,26 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   border-color: var(--control-border);
 }
 
-/* Navigation reads as navigation, not a list of unmarked links. */
+/* Navigation reads as navigation, not a list of unmarked links.
+   Servers, rooms and DMs share one column: same width, same inset, same
+   4px control radius (SPEC §5.1 — that radius is for controls, not panels).
+   Room rows used to pull into the rail gutter, which made their selected
+   fill narrower than the server card. */
 .rail .rail-head {
   align-items: center;
 }
 .rail .rail-section + .rail-section:not(.rail-places) {
   margin-top: 0.5rem;
 }
+.rail .server-list,
+.rail .room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
 .rail .server-item {
-  margin: 0.75rem 0 0;
-  padding: 0.875rem 0.75rem;
+  margin: 0;
+  padding: 0.75rem 0.875rem;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
   width: 100%;
@@ -125,10 +133,18 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
 .rail .server-item[aria-current="true"] {
   border-color: var(--text-secondary);
 }
+.rail .server-row,
+.rail .room-item {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: var(--radius-control);
+}
 .rail .room-item {
   min-height: 2.75rem;
-  border-radius: var(--radius-control);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
+  padding: 0.625rem 0.875rem;
+  border-left: 2px solid transparent;
 }
 .rail .room-item[aria-current="true"],
 .rail .room-item[aria-pressed="true"] {
@@ -142,10 +158,11 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   display: flex;
   gap: 0.625rem;
   align-items: center;
-  border: 1px solid var(--control-border);
+  border: 0;
   margin-inline: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 0.875rem;
   width: 100%;
+  background: none;
 }
 .rail .rail-self {
   align-items: center;
@@ -155,11 +172,6 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   padding-top: 1rem;
   border-top: 0;
 }
-.rail .rail-places .room-item {
-  border: 0;
-  background: none;
-  padding-inline: 0.5rem;
-}
 .rail .rail-places .room-item:hover,
 .rail .rail-places .room-item[aria-pressed="true"] {
   background: var(--control-hover);
@@ -167,10 +179,9 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
 .rail .server-row {
   display: flex;
   align-items: center;
-  margin-top: 0.75rem;
+  margin-top: 0;
   border: 1px solid var(--hairline-strong);
   border-left: 2px solid transparent;
-  border-radius: var(--radius-control);
   background: var(--control-fill);
 }
 .rail .server-row[data-current="true"] {
@@ -180,8 +191,9 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
 .rail .server-row .server-item {
   border: 0;
   margin: 0;
-  padding: 0.75rem 0.5rem;
+  padding: 0.75rem 0.875rem;
   min-width: 0;
+  width: auto;
   flex: 1;
   background: none;
   font-size: 1rem;
@@ -194,7 +206,7 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   overflow-wrap: anywhere;
 }
 .server-options-trigger {
-  margin-right: 0.25rem;
+  margin-right: 0.5rem;
 }
 .rail-settings svg {
   width: 1rem;
@@ -239,6 +251,9 @@ button:is(.ui-primary, .auth-go, .composer-send, .voice-join):disabled {
   font-size: 1.125rem;
 }
 .composer .composer-input {
+  border-color: var(--control-border);
+}
+.composer .composer-field {
   border-color: var(--control-border);
 }
 

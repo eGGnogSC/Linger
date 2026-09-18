@@ -669,21 +669,51 @@ for (const display of [
   }
 }
 
+// Shared across every #83 regression below. Design intent: the rail never
+// grows a horizontal scrollbar, at any width — long, unbreakable text wraps
+// or truncates in place instead. Only the vertical scrollbar is meant to come
+// and go, and only with the window's height.
+async function railHasNoSidewaysOverflow(
+  page: import("@playwright/test").Page,
+) {
+  expect(
+    await page
+      .locator(".rail-content")
+      .evaluate((node) => node.scrollWidth <= node.clientWidth),
+  ).toBe(true);
+}
+
+// The scrollWidth/clientWidth check above catches the scroll box itself
+// growing sideways, but not a single row quietly poking past the box's own
+// right edge while the box "absorbs" it some other way. This walks every
+// text-bearing row (the server name, every room, every DM, Media and
+// Search) and fails if any of them render past where the scroll box's own
+// content ends — which is what stops someone from "fixing" #83 later by
+// slapping overflow-x: hidden on the box instead of closing the gap it
+// overflows.
+async function railTextNeverEscapesTheScrollBox(
+  page: import("@playwright/test").Page,
+) {
+  const overflowing = await page.locator(".rail-content").evaluate((node) => {
+    const innerRight = node.getBoundingClientRect().left + node.clientWidth;
+    return [
+      ...node.querySelectorAll(".server-name, .room-item, .room-slug"),
+    ]
+      .filter((element) => element.getClientRects().length > 0)
+      .map((element) => element.getBoundingClientRect().right - innerRight)
+      .filter((overshootPx) => overshootPx > 1);
+  });
+  expect(overflowing).toEqual([]);
+}
+
 test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/tests/fixtures/console.html");
-  const railContent = page.locator(".rail-content");
   const rail = page.locator(".rail");
   const places = page.locator(".rail-places");
 
-  const noSidewaysOverflow = async () =>
-    expect(
-      await railContent.evaluate(
-        (node) => node.scrollWidth <= node.clientWidth,
-      ),
-    ).toBe(true);
   // The hairline above Media/Search bleeds out to the rail's own edges by
   // design (it is drawn full-bleed, like every other hairline). Checking it
   // still reaches those edges catches a future "fix" that clips it short
@@ -701,7 +731,7 @@ test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
   // (a) At the default width, the rail's content is nowhere near tall enough
   // to need vertical scrolling, so there is nothing to check but that the box
   // is exactly as wide as its own content.
-  await noSidewaysOverflow();
+  await railHasNoSidewaysOverflow(page);
   await hairlineSpansRail();
 
   // (b) Resizing the rail narrower and then wider must not reopen the gap:
@@ -712,11 +742,11 @@ test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
   await railSeparator.focus();
   await page.keyboard.press("Home");
   await expect(railSeparator).toHaveAttribute("aria-valuenow", "200");
-  await noSidewaysOverflow();
+  await railHasNoSidewaysOverflow(page);
   await hairlineSpansRail();
   await page.keyboard.press("End");
   await expect(railSeparator).toHaveAttribute("aria-valuenow", "360");
-  await noSidewaysOverflow();
+  await railHasNoSidewaysOverflow(page);
   await hairlineSpansRail();
 
   // (c) A short window is where the rail genuinely needs to scroll up and
@@ -724,10 +754,12 @@ test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
   await page.setViewportSize({ width: 900, height: 480 });
   await expect
     .poll(() =>
-      railContent.evaluate((node) => node.scrollHeight > node.clientHeight),
+      page
+        .locator(".rail-content")
+        .evaluate((node) => node.scrollHeight > node.clientHeight),
     )
     .toBe(true);
-  await noSidewaysOverflow();
+  await railHasNoSidewaysOverflow(page);
 
   // (d) Narrow enough that navigation moves into a drawer over the message
   // list: same scroll box, same fix.
@@ -736,5 +768,142 @@ test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
   await expect(
     page.getByRole("dialog", { name: "Navigation", exact: true }),
   ).toBeVisible();
-  await noSidewaysOverflow();
+  await railHasNoSidewaysOverflow(page);
+});
+
+test("dragging the rail separator by hand, the whole way and back, never opens a sideways scrollbar (#83)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/tests/fixtures/console.html");
+  const separator = page.getByRole("separator", {
+    name: "Resize navigation",
+  });
+  await separator.focus();
+  await page.keyboard.press("Home");
+  await expect(separator).toHaveAttribute("aria-valuenow", "200");
+  const box = await separator.boundingBox();
+  if (!box) throw new Error("missing separator");
+  const y = box.y + box.height / 2;
+  const startX = box.x + 2;
+
+  // A real pointer drag, not the keyboard: down at the minimum width, then a
+  // sampled walk out to the maximum and all the way back, checking at every
+  // sampled width along the way rather than just at the two ends.
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  const sampledWidths: number[] = [];
+  const sample = async (dx: number) => {
+    await page.mouse.move(startX + dx, y, { steps: 4 });
+    sampledWidths.push(Number(await separator.getAttribute("aria-valuenow")));
+    await railHasNoSidewaysOverflow(page);
+    await railTextNeverEscapesTheScrollBox(page);
+  };
+  for (let dx = 0; dx <= 160; dx += 20) await sample(dx);
+  for (let dx = 160; dx >= 0; dx -= 20) await sample(dx);
+  await page.mouse.up();
+
+  // Confirm the drag actually reached both ends, so this sweep exercised the
+  // full range rather than stalling short of it.
+  expect(Math.min(...sampledWidths)).toBe(200);
+  expect(Math.max(...sampledWidths)).toBe(360);
+});
+
+for (const width of [1440, 1100, 900]) {
+  for (const rail of [200, 360] as const) {
+    test(`at ${width}px with the rail pinned to ${rail}px, the vertical scrollbar tracks window height without the rail ever scrolling sideways (#83)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/tests/fixtures/console.html");
+      const separator = page.getByRole("separator", {
+        name: "Resize navigation",
+      });
+      await separator.focus();
+      await page.keyboard.press(rail === 200 ? "Home" : "End");
+      await expect(separator).toHaveAttribute("aria-valuenow", String(rail));
+
+      let sawVerticalScrolling = false;
+      let sawNoVerticalScrolling = false;
+      // Tall, then progressively shorter, then tall again: the vertical
+      // scrollbar should switch on once the content stops fitting and
+      // switch back off once it fits again, in either direction, not get
+      // stuck. Nothing here hardcodes which heights scroll — that is
+      // measured, not assumed.
+      for (const height of [900, 720, 560, 480, 720, 900]) {
+        await page.setViewportSize({ width, height });
+        await railHasNoSidewaysOverflow(page);
+        await railTextNeverEscapesTheScrollBox(page);
+        const scrolls = await page
+          .locator(".rail-content")
+          .evaluate((node) => node.scrollHeight > node.clientHeight);
+        if (scrolls) sawVerticalScrolling = true;
+        else sawNoVerticalScrolling = true;
+      }
+      // The sweep is pointless if it never actually exercised both states.
+      expect(sawVerticalScrolling).toBe(true);
+      expect(sawNoVerticalScrolling).toBe(true);
+    });
+  }
+}
+
+test("the narrow navigation drawer holds to the same no-text-escapes rule (#83)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 600, height: 480 });
+  await page.goto("/tests/fixtures/console.html");
+  await page.getByRole("button", { name: "Navigation", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Navigation", exact: true }),
+  ).toBeVisible();
+  await railHasNoSidewaysOverflow(page);
+  await railTextNeverEscapesTheScrollBox(page);
+});
+
+test("an unbroken name too long to fit wraps or truncates in place, never scrolling the rail sideways (#83)", async ({
+  page,
+}) => {
+  // The server name wraps onto a second line (app.css `.rail .server-name`,
+  // a 2-line clamp) when it does not fit. A room's name is a single line
+  // that truncates with an ellipsis instead (app.css `.room-slug`) — that
+  // ellipsis behaviour predates #83 and is a deliberate, separate design
+  // choice for nav-style lists, so this test does not require the room name
+  // to wrap, only that neither one ever pushes the rail sideways.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/tests/fixtures/console.html?longnames");
+  const separator = page.getByRole("separator", {
+    name: "Resize navigation",
+  });
+  await separator.focus();
+  await page.keyboard.press("Home");
+  await expect(separator).toHaveAttribute("aria-valuenow", "200");
+
+  await railHasNoSidewaysOverflow(page);
+  await railTextNeverEscapesTheScrollBox(page);
+
+  const serverName = page.locator(".server-name");
+  await expect(serverName).toContainText("reallyreally");
+  const serverNameBox = await serverName.evaluate((node) => ({
+    height: node.getBoundingClientRect().height,
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth,
+  }));
+  // A single line of this text is well under 30px tall; a name this long
+  // wrapping onto a second line is unmistakably taller than that. And having
+  // wrapped, nothing about it should still be cut off sideways.
+  expect(serverNameBox.height).toBeGreaterThan(30);
+  expect(serverNameBox.scrollWidth).toBeLessThanOrEqual(
+    serverNameBox.clientWidth,
+  );
+
+  const longRoom = page.locator(".room-item", { hasText: "reallyreally" });
+  await expect(longRoom).toBeVisible();
+  const roomSlugHeight = await longRoom
+    .locator(".room-slug")
+    .evaluate((node) => node.getBoundingClientRect().height);
+  // Confirms it really did take the ellipsis path (one line, same height as
+  // any other room) rather than silently growing or spilling out of the
+  // rail — railTextNeverEscapesTheScrollBox above is what actually proves
+  // the "never spills out" half of that.
+  expect(roomSlugHeight).toBeLessThan(30);
 });

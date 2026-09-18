@@ -20,10 +20,12 @@ test("plus offers Add file and the smile inserts emoji at the caret", async ({
   const box = page.getByRole("textbox", { name: "message in #fixture" });
   await box.fill("hi");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  const add = page.getByRole("dialog", { name: "Add to this message" });
   await expect(
-    page.getByRole("button", { name: "Add file…", exact: true }),
+    add.getByRole("button", { name: "Add file…", exact: true }),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await add.getByRole("button", { name: "Close Add to this message" }).click();
+  await expect(add).toHaveCount(0);
   await box.focus();
   await box.evaluate((node) => {
     const field = node as HTMLTextAreaElement;

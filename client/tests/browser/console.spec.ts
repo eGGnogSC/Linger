@@ -771,11 +771,12 @@ test("the rail's scroll box never grows a sideways scrollbar (#83)", async ({
   await railHasNoSidewaysOverflow(page);
 });
 
-test("dragging the rail separator by hand, the whole way and back, never opens a sideways scrollbar (#83)", async ({
-  page,
-}) => {
+async function dragRailSeparatorSweep(
+  page: import("@playwright/test").Page,
+  fixtureUrl: string,
+) {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/tests/fixtures/console.html");
+  await page.goto(fixtureUrl);
   const separator = page.getByRole("separator", {
     name: "Resize navigation",
   });
@@ -807,42 +808,91 @@ test("dragging the rail separator by hand, the whole way and back, never opens a
   // full range rather than stalling short of it.
   expect(Math.min(...sampledWidths)).toBe(200);
   expect(Math.max(...sampledWidths)).toBe(360);
-});
+}
+
+for (const [label, fixtureUrl] of [
+  ["", "/tests/fixtures/console.html"],
+  [
+    " with a name too long to fit wrapping the whole way through",
+    "/tests/fixtures/console.html?longnames",
+  ],
+] as const) {
+  test(`dragging the rail separator by hand, the whole way and back, never opens a sideways scrollbar${label} (#83)`, async ({
+    page,
+  }) => {
+    await dragRailSeparatorSweep(page, fixtureUrl);
+  });
+}
+
+async function railWindowGridStep(
+  page: import("@playwright/test").Page,
+  width: number,
+  rail: 200 | 360,
+  fixtureUrl: string,
+  // With a genuinely very long name wrapping in the narrowest rail, the
+  // wrapped block alone can be taller than every height in the sweep below,
+  // so the rail can be stuck scrolling vertically the whole time — that is
+  // correct (there is more content than room), not a bug, so only the plain
+  // grid requires the sweep to have exercised both states.
+  requireBothVerticalStates: boolean,
+) {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(fixtureUrl);
+  const separator = page.getByRole("separator", {
+    name: "Resize navigation",
+  });
+  await separator.focus();
+  await page.keyboard.press(rail === 200 ? "Home" : "End");
+  await expect(separator).toHaveAttribute("aria-valuenow", String(rail));
+
+  let sawVerticalScrolling = false;
+  let sawNoVerticalScrolling = false;
+  // Tall, then progressively shorter, then tall again: the vertical
+  // scrollbar should switch on once the content stops fitting and switch
+  // back off once it fits again, in either direction, not get stuck.
+  // Nothing here hardcodes which heights scroll — that is measured, not
+  // assumed.
+  for (const height of [900, 720, 560, 480, 720, 900]) {
+    await page.setViewportSize({ width, height });
+    await railHasNoSidewaysOverflow(page);
+    await railTextNeverEscapesTheScrollBox(page);
+    const scrolls = await page
+      .locator(".rail-content")
+      .evaluate((node) => node.scrollHeight > node.clientHeight);
+    if (scrolls) sawVerticalScrolling = true;
+    else sawNoVerticalScrolling = true;
+  }
+  expect(sawVerticalScrolling).toBe(true);
+  if (requireBothVerticalStates)
+    // The sweep is pointless if it never actually exercised both states.
+    expect(sawNoVerticalScrolling).toBe(true);
+}
 
 for (const width of [1440, 1100, 900]) {
   for (const rail of [200, 360] as const) {
     test(`at ${width}px with the rail pinned to ${rail}px, the vertical scrollbar tracks window height without the rail ever scrolling sideways (#83)`, async ({
       page,
     }) => {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto("/tests/fixtures/console.html");
-      const separator = page.getByRole("separator", {
-        name: "Resize navigation",
-      });
-      await separator.focus();
-      await page.keyboard.press(rail === 200 ? "Home" : "End");
-      await expect(separator).toHaveAttribute("aria-valuenow", String(rail));
-
-      let sawVerticalScrolling = false;
-      let sawNoVerticalScrolling = false;
-      // Tall, then progressively shorter, then tall again: the vertical
-      // scrollbar should switch on once the content stops fitting and
-      // switch back off once it fits again, in either direction, not get
-      // stuck. Nothing here hardcodes which heights scroll — that is
-      // measured, not assumed.
-      for (const height of [900, 720, 560, 480, 720, 900]) {
-        await page.setViewportSize({ width, height });
-        await railHasNoSidewaysOverflow(page);
-        await railTextNeverEscapesTheScrollBox(page);
-        const scrolls = await page
-          .locator(".rail-content")
-          .evaluate((node) => node.scrollHeight > node.clientHeight);
-        if (scrolls) sawVerticalScrolling = true;
-        else sawNoVerticalScrolling = true;
-      }
-      // The sweep is pointless if it never actually exercised both states.
-      expect(sawVerticalScrolling).toBe(true);
-      expect(sawNoVerticalScrolling).toBe(true);
+      await railWindowGridStep(
+        page,
+        width,
+        rail,
+        "/tests/fixtures/console.html",
+        true,
+      );
+    });
+    // Same grid again, but with a name too long to fit: wrapping has to keep
+    // holding while the window is actively resized, not just at rest.
+    test(`at ${width}px with the rail pinned to ${rail}px and a name too long to fit, wrapping holds up while the window resizes (#83)`, async ({
+      page,
+    }) => {
+      await railWindowGridStep(
+        page,
+        width,
+        rail,
+        "/tests/fixtures/console.html?longnames",
+        false,
+      );
     });
   }
 }
@@ -860,50 +910,115 @@ test("the narrow navigation drawer holds to the same no-text-escapes rule (#83)"
   await railTextNeverEscapesTheScrollBox(page);
 });
 
-test("an unbroken name too long to fit wraps or truncates in place, never scrolling the rail sideways (#83)", async ({
+// The rail must never scroll sideways AND never truncate text (owner's rule,
+// stated plainly): if a line is too long for the rail, the line wraps. A
+// room or DM name used to get a single-line ellipsis (app.css `.room-slug`);
+// the server name used to clamp to two lines (app.css `.rail .server-name`,
+// removed). Both now wrap fully instead — this checks that at the rail's
+// minimum, default and maximum widths.
+for (const rail of [200, 232, 360] as const) {
+  test(`an unbroken name too long to fit wraps instead of truncating, with the rail at ${rail}px (#83)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/tests/fixtures/console.html?longnames");
+    if (rail !== 232) {
+      const separator = page.getByRole("separator", {
+        name: "Resize navigation",
+      });
+      await separator.focus();
+      await page.keyboard.press(rail === 200 ? "Home" : "End");
+      await expect(separator).toHaveAttribute("aria-valuenow", String(rail));
+    }
+
+    await railHasNoSidewaysOverflow(page);
+    await railTextNeverEscapesTheScrollBox(page);
+
+    const longWord =
+      "reallyreallyreallyreallyreallyreallyreallyreallylongunbrokenname";
+    const checkWraps = async (locator: import("@playwright/test").Locator) => {
+      await expect(locator).toBeVisible();
+      const box = await locator.evaluate((node) => ({
+        height: node.getBoundingClientRect().height,
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth,
+        textOverflow: getComputedStyle(node).textOverflow,
+        lineClamp: getComputedStyle(node).webkitLineClamp,
+        innerText: (node as HTMLElement).innerText,
+      }));
+      // No hidden internal overflow: the box grew to fit its own text
+      // instead of clipping it sideways.
+      expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+      // Neither truncation mechanism survives: no ellipsis, no line clamp.
+      expect(box.textOverflow).not.toBe("ellipsis");
+      expect(["none", ""]).toContain(box.lineClamp);
+      // A single line of this text is well under 30px tall; wrapping is
+      // unmistakably taller than that.
+      expect(box.height).toBeGreaterThan(30);
+      // The full word actually made it into the rendered text — nothing was
+      // cut off the end of it.
+      expect(box.innerText).toContain(longWord);
+    };
+
+    await checkWraps(page.locator(".server-name"));
+    await checkWraps(
+      page.locator(".room-item", { hasText: "reallyreally" }).locator(".room-slug"),
+    );
+  });
+}
+
+// General guard: walk every element inside the rail and fail if truncation
+// creeps back in anywhere, not just on the two spots #83 originally hit.
+// Only a handful of things are legitimately exempt from the nowrap check —
+// each is named below with why.
+const RAIL_NOWRAP_ALLOWLIST = [
+  // Screen-reader-only text (base.css `.sr-only`): clipped to 1x1px and
+  // never visually rendered, so "nowrap" there describes nothing a sighted
+  // reader could see truncated.
+  ".sr-only",
+];
+async function railNeverTruncatesText(
+  page: import("@playwright/test").Page,
+) {
+  const violations = await page.evaluate((allowlist) => {
+    const rail = document.querySelector(".rail");
+    if (!rail) return ["missing .rail"];
+    const found: string[] = [];
+    for (const element of [rail, ...rail.querySelectorAll("*")]) {
+      const style = getComputedStyle(element);
+      const describe = () =>
+        `${element.tagName.toLowerCase()}.${[...element.classList].join(".")}`;
+      if (style.textOverflow === "ellipsis")
+        found.push(`${describe()}: text-overflow: ellipsis`);
+      if (style.webkitLineClamp !== "none" && style.webkitLineClamp !== "")
+        found.push(`${describe()}: -webkit-line-clamp: ${style.webkitLineClamp}`);
+      const hasText = element.textContent !== null && element.textContent.trim() !== "";
+      if (
+        style.whiteSpace === "nowrap" &&
+        hasText &&
+        !allowlist.some((selector) => element.matches(selector))
+      )
+        found.push(`${describe()}: white-space: nowrap (with text)`);
+    }
+    return found;
+  }, RAIL_NOWRAP_ALLOWLIST);
+  expect(violations).toEqual([]);
+}
+
+test("nothing inside the rail truncates its text, at rest or with a name too long to fit (#83)", async ({
   page,
 }) => {
-  // The server name wraps onto a second line (app.css `.rail .server-name`,
-  // a 2-line clamp) when it does not fit. A room's name is a single line
-  // that truncates with an ellipsis instead (app.css `.room-slug`) — that
-  // ellipsis behaviour predates #83 and is a deliberate, separate design
-  // choice for nav-style lists, so this test does not require the room name
-  // to wrap, only that neither one ever pushes the rail sideways.
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/tests/fixtures/console.html");
+  await railNeverTruncatesText(page);
+
   await page.goto("/tests/fixtures/console.html?longnames");
+  await railNeverTruncatesText(page);
   const separator = page.getByRole("separator", {
     name: "Resize navigation",
   });
   await separator.focus();
   await page.keyboard.press("Home");
   await expect(separator).toHaveAttribute("aria-valuenow", "200");
-
-  await railHasNoSidewaysOverflow(page);
-  await railTextNeverEscapesTheScrollBox(page);
-
-  const serverName = page.locator(".server-name");
-  await expect(serverName).toContainText("reallyreally");
-  const serverNameBox = await serverName.evaluate((node) => ({
-    height: node.getBoundingClientRect().height,
-    scrollWidth: node.scrollWidth,
-    clientWidth: node.clientWidth,
-  }));
-  // A single line of this text is well under 30px tall; a name this long
-  // wrapping onto a second line is unmistakably taller than that. And having
-  // wrapped, nothing about it should still be cut off sideways.
-  expect(serverNameBox.height).toBeGreaterThan(30);
-  expect(serverNameBox.scrollWidth).toBeLessThanOrEqual(
-    serverNameBox.clientWidth,
-  );
-
-  const longRoom = page.locator(".room-item", { hasText: "reallyreally" });
-  await expect(longRoom).toBeVisible();
-  const roomSlugHeight = await longRoom
-    .locator(".room-slug")
-    .evaluate((node) => node.getBoundingClientRect().height);
-  // Confirms it really did take the ellipsis path (one line, same height as
-  // any other room) rather than silently growing or spilling out of the
-  // rail — railTextNeverEscapesTheScrollBox above is what actually proves
-  // the "never spills out" half of that.
-  expect(roomSlugHeight).toBeLessThan(30);
+  await railNeverTruncatesText(page);
 });

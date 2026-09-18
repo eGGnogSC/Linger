@@ -45,7 +45,7 @@ fn ignore_terminal_hangup() {
     // handler only calls async-signal-safe C functions.
     unsafe {
         let mut action: libc::sigaction = std::mem::zeroed();
-        action.sa_sigaction = on_hangup as libc::sighandler_t;
+        action.sa_sigaction = on_hangup as *const () as libc::sighandler_t;
         action.sa_flags = libc::SA_RESTART;
         libc::sigemptyset(&mut action.sa_mask);
         libc::sigaction(libc::SIGHUP, &action, std::ptr::null_mut());

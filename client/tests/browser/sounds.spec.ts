@@ -61,10 +61,16 @@ test("quiet hours silence live chimes but play still previews", async ({
     page.getByText(/Quiet hours are silencing live chimes until 08:00/),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "preview DM messages", exact: true }),
+    page
+      .locator(".sound-preference")
+      .filter({ hasText: "DM messages" })
+      .getByRole("button"),
   ).toBeEnabled();
   await expect(
-    page.getByRole("button", { name: "preview room messages", exact: true }),
+    page
+      .locator(".sound-preference")
+      .filter({ hasText: "room messages" })
+      .getByRole("button"),
   ).toBeEnabled();
   await page
     .getByRole("switch", { name: "Quiet hours", exact: true })

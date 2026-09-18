@@ -30,6 +30,8 @@ test("plus offers Add file and the smile inserts emoji at the caret", async ({
     field.setSelectionRange(2, 2);
   });
   await page.getByRole("button", { name: "Emoji", exact: true }).click();
-  await page.getByRole("button", { name: "wave", exact: true }).click();
+  const picker = page.getByRole("dialog", { name: "Emoji" });
+  await expect(picker).toBeVisible();
+  await picker.locator('[aria-label="wave"]').click();
   await expect(box).toHaveValue("hi👋");
 });
